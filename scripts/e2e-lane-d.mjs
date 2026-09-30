@@ -58,6 +58,12 @@ await check('mentor table lists demo students and flags stuck', async () => {
   await M.waitForSelector('[data-testid=mentor-table] >> text=Asha', T);
   await M.waitForSelector('[data-testid=mentor-table] >> text=stuck', T);
 });
+await check('P-D4: mentor tile for Stu flags STUCK after seeded failures, shows no code', async () => {
+  await M.click('[role=tab]:has-text("Debug")');
+  await M.waitForSelector('[data-testid=tile-Stu][data-stuck=true]', T);
+  const txt = await M.innerText('[data-testid=overview]');
+  if (/def |print\(/.test(txt)) throw new Error('code leaked into tile');
+});
 await S.screenshot({ path: process.env.TEMP + '/lane-d-student.png' });
 await M.screenshot({ path: process.env.TEMP + '/lane-d-mentor.png' });
 await browser.close();

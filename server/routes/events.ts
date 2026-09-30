@@ -144,6 +144,8 @@ export interface RoomRow {
   topError: string | null;
   streak: number;
   stuck: boolean;
+  lastRun: 'ok' | 'failed' | null;
+  lastError: string | null;
 }
 
 // ----------------------------------------------------------------------------------------- routes
@@ -171,6 +173,8 @@ router.get('/progress/room', requireUser, (req, res) => {
       topError: s.errorCategories[0]?.label ?? null,
       streak: s.streak,
       stuck: s.streak >= 3,
+      lastRun: s.recent.length ? (s.recent[s.recent.length - 1].ok ? 'ok' : 'failed') : null,
+      lastError: s.recent.length ? s.recent[s.recent.length - 1].label ?? null : null,
     };
   });
   res.json({ room, rows });
@@ -203,7 +207,7 @@ router.post('/demo/seed', requireUser, (req, res) => {
     p.script.forEach((cat, i) => added.push(...seedRun(p.id, roomCode, base + i * 10 * 60 * 1000, cat)));
   }
   if (!has(me.userId)) {
-    ['IndexError', 'IndexError', 'ok', 'IndexError', 'IndexError'].forEach((cat, i) =>
+    ['IndexError', 'ok', 'IndexError', 'IndexError', 'IndexError'].forEach((cat, i) =>
       added.push(...seedRun(me.userId, roomCode, base + i * 8 * 60 * 1000, cat)),
     );
   }

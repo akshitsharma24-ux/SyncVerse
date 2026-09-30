@@ -9,6 +9,7 @@ import type { DebugGrant, RunResult } from '@syncverse/shared';
 import { ApiError, api, eventSourceUrl } from '../api';
 import { useSessionUser, usePresence } from '../session';
 import { Icon } from '../shell/icons';
+import { Overview } from './Overview';
 
 const LIVE = (g: DebugGrant) => g.status === 'requested' || g.status === 'active';
 
@@ -133,6 +134,15 @@ export function DebugPanel() {
         Your runs and debugging are private. Someone can look only if you allow it, and you can end it any time. Mentors see that you
         are stuck, not what you ran.
       </p>
+
+      {me.role === 'mentor' && (
+        <Overview
+          people={people}
+          roomCode={me.roomCode}
+          stateOf={(id) => mine.find((x) => x.ownerId === id && LIVE(x))?.status ?? null}
+          onRequest={request}
+        />
+      )}
 
       <div>
         <div className="eyebrow" style={{ marginBottom: 6 }}>People in this room</div>
