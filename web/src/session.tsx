@@ -5,16 +5,19 @@
  *   useWorkspace()  -> { lastRun, setLastRun }          Lane B sets lastRun after a run; Lane C/D read it
  *   useEditor()     -> EditorHandle                     getValue / replaceAll / setMarkers / highlightLine
  *   usePresence()   -> PresenceUser[]                   who is in the room (Lane A feeds it from Yjs awareness in P-A3)
+ *   useActiveFile() -> { id, name, language } | null    the file being edited; Lane B passes .language to the runner
  *
  * Session lives in sessionStorage (per browser TAB) so two tabs on one laptop are two different people.
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { EditorHandle, PresenceUser, Role, RunResult, SessionUser } from '@syncverse/shared';
+import { PEOPLE_COLORS, type EditorHandle, type PresenceUser, type Role, type RunResult, type SessionUser } from '@syncverse/shared';
+import { getAccount, isAccountId } from './auth';
+import { ToastProvider } from './shell/toast';
 
 // ---------------------------------------------------------------------------------------- session
 const STORAGE_KEY = 'syncverse.session';
-// No red: red means error in this UI.
-const COLORS = ['#1f5fbf', '#2e8b5e', '#6b4fbb', '#d9692b', '#0f8b8d', '#a0522d', '#7a3e9d', '#3d6b99'];
+// No red: red means error in this UI. Every colour keeps white text at >= 4.5:1 (see PEOPLE_COLORS in shared/types.ts).
+const COLORS = PEOPLE_COLORS;
 
 function colorFor(userId: string): string {
   let h = 0;
@@ -48,6 +51,8 @@ interface SessionCtx {
   session: SessionUser | null;
   join: (input: JoinInput) => void;
   leave: () => void;
+  /** Change fields of the current session (the room can change my role while I am in it). */
+  update: (patch: Partial<Pick<SessionUser, 'role' | 'name'>>) => void;
 }
 const SessionContext = createContext<SessionCtx | null>(null);
 
@@ -55,14 +60,16 @@ function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionUser | null>(() => readSession());
   const join = useCallback((input: JoinInput) => {
     const prev = readSession();
-    const userId = prev?.userId ?? newId();
+    // A signed-in account IS its identity (same person on every device); a guest gets one id per browser tab.
+    const account = getAccount();
+    const userId = account ? account.id : prev && !isAccountId(prev.userId) ? prev.userId : newId();
     const next: SessionUser = {
       userId,
-      name: input.name.trim() || 'Guest',
+      name: (account ? account.displayName : input.name.trim()) || 'Guest',
       role: input.role,
       // Same charset the server accepts for /collab/<code>; anything else would make the WebSocket path invalid.
       roomCode: input.roomCode.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'demo',
-      color: colorFor(userId),
+      color: account ? account.color : colorFor(userId),
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     setSession(next);
@@ -71,7 +78,14 @@ function SessionProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem(STORAGE_KEY);
     setSession(null);
   }, []);
-  const value = useMemo(() => ({ session, join, leave }), [session, join, leave]);
+  const update = useCallback<SessionCtx['update']>((patch) => {
+    const cur = readSession();
+    if (!cur) return;
+    const next = { ...cur, ...patch };
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setSession(next);
+  }, []);
+  const value = useMemo(() => ({ session, join, leave, update }), [session, join, leave, update]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
@@ -151,6 +165,38 @@ export function useEditorRegistry(): Register {
   return v;
 }
 
+// ---------------------------------------------------------------------------------------- active file
+export interface ActiveFile {
+  id: string;
+  name: string;
+  /** a LanguageId from shared/files.ts: 'python' | 'javascript' | 'java' | 'c' | 'cpp' | ... */
+  language: string;
+}
+const ActiveFileContext = createContext<ActiveFile | null>(null);
+const ActiveFileSetterContext = createContext<(f: ActiveFile | null) => void>(() => {});
+
+function ActiveFileProvider({ children }: { children: ReactNode }) {
+  const [file, setFile] = useState<ActiveFile | null>(null);
+  const set = useCallback((f: ActiveFile | null) => {
+    setFile((cur) => (cur && f && cur.id === f.id && cur.name === f.name && cur.language === f.language ? cur : f));
+  }, []);
+  return (
+    <ActiveFileSetterContext.Provider value={set}>
+      <ActiveFileContext.Provider value={file}>{children}</ActiveFileContext.Provider>
+    </ActiveFileSetterContext.Provider>
+  );
+}
+
+/** The file currently open in the editor (null before the editor has loaded). Lane B: send `.language` with the run request. */
+export function useActiveFile(): ActiveFile | null {
+  return useContext(ActiveFileContext);
+}
+
+/** Lane A only. */
+export function useActiveFileSetter(): (f: ActiveFile | null) => void {
+  return useContext(ActiveFileSetterContext);
+}
+
 // -------------------------------------------------------------------------------------- presence
 const PresenceContext = createContext<PresenceUser[]>([]);
 const PresenceSetterContext = createContext<(users: PresenceUser[]) => void>(() => {});
@@ -180,10 +226,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <SessionProvider>
       <WorkspaceProvider>
         <EditorProvider>
-          <PresenceProvider>{children}</PresenceProvider>
+          <PresenceProvider>
+            <ActiveFileProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </ActiveFileProvider>
+          </PresenceProvider>
         </EditorProvider>
       </WorkspaceProvider>
     </SessionProvider>
   );
 }
-

@@ -1,6 +1,6 @@
 # Lane A - Editor sync, presence, video  (owner: Akshit)
 
-Read `CLAUDE.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
+Read `CONTRIBUTING.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
 
 **Folders you may edit:** `web/src/editor/`, `web/src/video/`, `server/collab.ts`, `server/routes/livekit.ts` (and the shell files, only in P-A1 or by agreement)
 

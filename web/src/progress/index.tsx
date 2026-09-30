@@ -69,7 +69,7 @@ export function ProgressPanel() {
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               {s.recent.length === 0 && <span style={{ fontSize: 12, color: 'var(--muted)' }}>none yet</span>}
               {s.recent.map((r, i) => (
-                <span key={i} className="mono" style={{ fontSize: 11, border: '1px solid var(--ink)', borderRadius: 3, padding: '1px 6px', background: r.ok ? 'transparent' : 'repeating-linear-gradient(135deg, rgba(21,21,21,0.12) 0 1px, transparent 1px 5px)' }}>
+                <span key={i} className="mono" style={{ fontSize: 11, border: '1px solid var(--ink)', borderRadius: 3, padding: '1px 6px', background: r.ok ? 'transparent' : 'repeating-linear-gradient(135deg, var(--hatch-strong) 0 1px, transparent 1px 5px)' }}>
                   {r.ok ? 'ok' : r.label ?? 'error'}
                 </span>
               ))}

@@ -4,7 +4,11 @@
  * another lane reads. See docs/PLAN section 4.2.
  */
 
-export type Role = 'student' | 'mentor';
+/** viewer = read-only observer (cannot edit, cannot speak in the call). Added after the prototype; other lanes may ignore it. */
+export type Role = 'student' | 'mentor' | 'viewer';
+
+/** The only colours people (cursors, avatars) can have: each keeps white text at >= 4.5:1 and none is red (red = error). */
+export const PEOPLE_COLORS = ['#1f5fbf', '#26794f', '#6b4fbb', '#b8531b', '#0b7477', '#a0522d', '#7a3e9d', '#3d6b99'] as const;
 
 export interface SessionUser {
   userId: string; // uuid generated in the browser
@@ -116,7 +120,55 @@ export interface PresenceUser {
   state: 'online' | 'typing' | 'idle';
 }
 
-// ---- Request identity (prototype: trusted headers, no login) -------------------------------------
+// ---- Request identity: a signed-in account (Authorization: Bearer) or a guest (headers, no proof) -----
 export const HEADER_USER_ID = 'x-user-id';
 export const HEADER_USER_NAME = 'x-user-name';
 export const HEADER_ROLE = 'x-role';
+/** Which room the request is about; lets the server apply the member's verified role instead of the claimed one. */
+export const HEADER_ROOM = 'x-room';
+
+// ---- Lane A: accounts, rooms and roles ------------------------------------------------------------------
+/** What the server tells the browser about a signed-in account (never includes the password hash). */
+export interface AccountProfile {
+  id: string; // 'acct_...'; this is the userId everywhere once signed in
+  username: string;
+  displayName: string;
+  color: string; // hex, cursor and avatar colour
+  defaultRole: Exclude<Role, 'viewer'>;
+  createdAt: number;
+}
+
+export interface MemberView {
+  userId: string;
+  name: string;
+  role: Role;
+  owner: boolean;
+  /** A mentor paused this person's editing. */
+  muted: boolean;
+  /** Removed from the room by a mentor; cannot rejoin until allowed back. */
+  removed: boolean;
+  joinedAt: number;
+  lastSeenAt: number;
+}
+
+export interface RoomView {
+  code: string;
+  name: string;
+  ownerId: string;
+  createdAt: number;
+  /** When true, only the owner (and people the owner promotes) can join as a mentor. */
+  lockMentorSeats: boolean;
+  /** Mentors can freeze editing for every student at once. */
+  frozen: boolean;
+  members: MemberView[];
+}
+
+/** Summary row for the "your rooms" list on the entry page. */
+export interface RoomSummary {
+  code: string;
+  name: string;
+  role: Role;
+  owner: boolean;
+  lastActiveAt: number;
+  memberCount: number;
+}

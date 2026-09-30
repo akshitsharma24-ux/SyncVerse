@@ -7,6 +7,7 @@
  */
 import { Router } from 'express';
 import { AccessToken } from 'livekit-server-sdk';
+import { isRegistered, memberOf } from '../roomstore';
 
 export const router = Router();
 
@@ -30,7 +31,18 @@ router.get('/livekit/token', async (req, res) => {
     return;
   }
 
+  // Registered rooms only let their members into the call; viewers can watch and listen but not speak or share.
+  let viewer = false;
+  if (isRegistered(room)) {
+    const m = memberOf(room, identity);
+    if (!m || m.removed) {
+      res.status(403).json({ error: 'not_a_member', message: 'Join the room before joining its call.' });
+      return;
+    }
+    viewer = m.role === 'viewer';
+  }
+
   const at = new AccessToken(key, secret, { identity, name, ttl: '2h' });
-  at.addGrant({ roomJoin: true, room: `sv-${room}`, canPublish: true, canSubscribe: true, canPublishData: true });
+  at.addGrant({ roomJoin: true, room: `sv-${room}`, canPublish: !viewer, canSubscribe: true, canPublishData: !viewer });
   res.json({ token: await at.toJwt(), url });
 });

@@ -98,8 +98,16 @@ await check('remote cursor carries a name label (styled from awareness)', async 
   if (!content.includes('Miti')) throw new Error('label content was ' + content);
 });
 
-await check('usePresence() feeds other lanes (Debug panel stub lists the people)', async () => {
-  await A.waitForFunction(() => document.body.textContent.includes('people in room: Akshit, Miti'), null, { timeout: 4000 });
+await check('usePresence() feeds other lanes (the Debug panel lists the other person)', async () => {
+  // Lane D's real panel lists everyone else in the room under "People in this room"; the hidden tab stays mounted.
+  await A.waitForFunction(
+    () => {
+      const p = document.querySelector('[data-testid="debug-panel"]');
+      return !!p && p.textContent.includes('People in this room') && p.textContent.includes('Miti');
+    },
+    null,
+    { timeout: 6000 },
+  );
 });
 
 await check('EditorHandle.replaceAll in A reaches B, no leftovers', async () => {

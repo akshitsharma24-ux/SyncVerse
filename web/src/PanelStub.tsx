@@ -26,7 +26,7 @@ export function PanelStub({
         border: '1px dashed var(--soft)',
         borderRadius: 4,
         padding: 14,
-        background: 'repeating-linear-gradient(135deg, rgba(21,21,21,0.045) 0 1px, transparent 1px 7px)',
+        background: 'repeating-linear-gradient(135deg, var(--hatch-soft) 0 1px, transparent 1px 7px)',
       }}
     >
       <div className="eyebrow" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>

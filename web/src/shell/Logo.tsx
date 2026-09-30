@@ -2,8 +2,8 @@
 export function Logo({ size = 28, name = true }: { size?: number; name?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5">
-      <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-        <circle cx="16" cy="16" r="14.75" fill="none" stroke="#151515" strokeWidth="1.5" />
+      <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" style={{ color: 'var(--ink)' }}>
+        <circle cx="16" cy="16" r="14.75" fill="none" stroke="currentColor" strokeWidth="1.5" />
         {/* cursor 1 */}
         <rect x="10.2" y="8.5" width="2.2" height="13" rx="1.1" fill="#1f5fbf" />
         <rect x="10.2" y="8.5" width="6.4" height="3.6" rx="1" fill="#1f5fbf" />

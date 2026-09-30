@@ -1,4 +1,4 @@
-﻿# SyncVerse - read this first (every teammate and every Claude session)
+﻿# SyncVerse - read this first (every teammate)
 
 SyncVerse is a collaborative real-time code editor for remote STEM education (problem statement PS 02).
 Tonight's goal: a working **prototype demo at 9 am**. The plan is `SyncVerse_Overnight_Prototype_Plan.pdf`
@@ -33,7 +33,8 @@ If you need a change in someone else's area, ask in the group chat (or add a not
 - Server functions other lanes call (keep the signatures): `logEvent(e)` in `routes/events.ts`, `canView(viewerId, ownerId)` in
   `routes/debug.ts`, `getRun(id)` and `getLatestRunFor(ownerId)` in `routes/run.ts`.
 - Private by default: a run, explanation or trace is readable only by its owner or an active grantee (`canView`).
-- Identity is a trusted header (no login). Prototype only.
+- Identity: a signed-in account (token) or a guest (headers, unproven). `web/src/api.ts` sends the right one plus `x-room`, and the server then applies the role the room recorded (mentor / student / viewer), not the claimed one. `req.user.role` may be `viewer` (read-only: do not let viewers run code). Never read the role from anywhere but `req.user`.
+- The editor holds several files. `useEditor()` always means the OPEN file; `useActiveFile()` gives `{ id, name, language }` (send `language` with a run request; Judge0 ids are in `shared/files.ts`). `useRoom()` gives the room, my role and `canEdit`.
 
 ## Run it
 
@@ -51,12 +52,21 @@ Two people on one laptop: open two **tabs** (each tab is a different user). Shor
 Warm paper, ink-black, hairline frames, diagonal hatch bands. Tokens are CSS variables in `web/src/index.css`; do not hard-code colours.
 
 - Colours: `var(--paper)` page, `var(--panel)` panel, `var(--ink)` text and borders, `var(--muted)` secondary text, `var(--rule-soft)` light borders, `var(--danger)` / `var(--ok)` / `var(--warn)`. **Red is only for errors.** People colours (cursors, avatars) come from `usePresence()`.
+- **Dark theme:** there is a light and a dark theme (toggle in the top bar, remembered per browser, first visit follows the OS). `<html data-theme="light|dark">` swaps the same CSS variables, so **if you only use variables your panel is themed for free**. Never hard-code a colour (`#fff`, `white`, `rgba(0,0,0,..)`); use `var(--on-ink)` for text on a black button, `var(--overlay)` for modal scrims, `var(--hatch-soft|mid|strong)` for hatch bands, `var(--err-bg)` / `var(--danger-bg)` for error fills. Check your panel in both themes; `npm run e2e:a11y` audits every tab in both.
 - Fonts: Geist (text) and Geist Mono (code, numbers, eyebrows), bundled locally so the app works offline.
 - Classes: `btn` (black), `btn btn-outline`, `btn-sm`, `btn-block`; `input` (`input code` for monospace), `field`, `seg` (segmented control), `eyebrow` (small mono caps label), `mono`, `panel` / `panel-head`. Icons: `<Icon name="sparkle" />` from `web/src/shell/icons.tsx`.
 - Your panel renders inside a tab or a panel that already has padding and a border. Don't add another outer card; use `PanelStub` only while the real panel is unbuilt.
 - Gotcha: our CSS in `index.css` is unlayered and beats Tailwind utilities, so a Tailwind class like `hidden` will NOT override `.btn`'s display or an inline `style={{display}}`. Use the `hide-sm` / `hide-md` helper classes, or conditional rendering.
 - Keep `data-testid` hooks the tests rely on (see `scripts/e2e-*.mjs`). Add your own for new features.
 
+## Shared helpers and checks (use them, do not rebuild them)
+
+- **Fixtures and demo data:** `import { SAMPLES, SAMPLE_BY_ID, fixtureRuns, fixtureExplanations, fixtureDiagnostics, fixtureGrants, fixturePresence, makeSeedEvents, CONCEPTS, errorCategory, conceptsForCategory, OBSERVATION_RULE } from '@syncverse/shared'`. Build your UI against these before anyone's backend exists. The 9 planted-bug programs have verified error types and lines, and pre-baked explanations (usable as Lane C's answer cache).
+- **Toasts:** `const toast = useToast(); toast('Patch applied', 'ok')` (from `web/src/shell/toast.tsx`).
+- **Crash shield:** every panel is wrapped in `PanelBoundary`; if yours throws, only your panel shows an error card. Dev trick: open the app with `?crash=ai` to see it.
+- **Test hooks:** put the exact `data-testid` names from `docs/TESTIDS.md` on your UI. `npm run e2e:golden` finds your panel through them and reports `SKIP` until your panel root exists, then runs your demo step for real.
+- **Checks to run before you merge:** `npm run typecheck`, `npm run smoke`, `npm run e2e:golden`, `npm run e2e:a11y`. Demo morning: `npm run preflight -- --strict` and `npm run e2e:golden -- --strict`.
+- **Status chip** (top bar) shows which keys are missing on the server. **Demo script and checklist:** `docs/DEMO.md`.
 ## Conventions
 
 - TypeScript strict. `npm run typecheck` must pass before you merge.
@@ -67,14 +77,17 @@ Warm paper, ink-black, hairline frames, diagonal hatch bands. Tokens are CSS var
 
 ## Git
 
-- Repo: https://github.com/akshitsharma24-ux/SyncVerse. Branches: `lane-a-akshit`, `lane-b-simrit`, `lane-c-rahil`, `lane-d-miti` (all start from the same skeleton commit).
+- Repo: https://github.com/akshitsharma24-ux/SyncVerse. **`main` is the default and integration branch**; it holds the skeleton, Lane A, the shared tooling and Lane D. Lane branches: `lane-a-akshit`, `lane-b-simrit`, `lane-c-rahil`, `lane-d-miti`.
 - `git config core.autocrlf input` once per machine.
-- Work and push only on **your own lane branch**. Commit messages start with the task ID. Pull another lane's work with `git fetch origin` and `git merge origin/<their-branch>`.
-- `main` is created at the first integration window and lanes merge into it one at a time; run `npm run smoke` and the e2e checks after each merge.
-- Never force-push, never commit `.env`.
+- Work on **your own lane branch**. Start it from current `main`; merge `origin/main` into it often (`git fetch origin` then `git merge origin/main`). Commit messages start with the task ID.
+- When a task is done and `npm run typecheck`, `npm run smoke` and `npm run e2e:golden` pass, merge your branch into `main` (pull request or direct merge). Never push broken code to `main`: it is the demo.
+- Never force-push `main`, never commit `.env`.
+- **Only the people who did the work are credited (owner's rule).** Do NOT add `Co-Authored-By:` lines, "Generated with ..." lines or any similar tool credit to commit messages, pull requests, issues, code comments or docs. Commit as yourself only. If you find an existing commit with such a line, tell the repo owner instead of rewriting shared history.
+
 ## Never cut (the demo)
 
 Editor + presence (A2, A3), run + error line (B1 to B3), AI explain (C1, C2), debug access (D1). See the cut ladder in the plan.
+
 
 
 

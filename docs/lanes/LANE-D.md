@@ -1,6 +1,6 @@
-# Lane D - Debug access, progress, demo data  (owner: Miti)
+﻿# Lane D - Debug access, progress, demo data  (owner: Miti)
 
-Read `CLAUDE.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
+Read `CONTRIBUTING.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
 
 **Folders you may edit:** `web/src/debug/`, `web/src/progress/`, `web/src/demo/`, `server/routes/debug.ts`, `server/routes/events.ts`
 
@@ -55,3 +55,10 @@ One tile per participant: presence, last-run status, failed-run streak, stuck fl
 **Needs:** P-D1, P-D2
 
 **Blueprint tasks:** T-A-09, T-D-09
+
+## Status: built and merged into main
+
+Lane D is finished and merged into `main` (one squashed commit credited to Miti). Its real test hooks (`debug-panel`, `request-<userId>`, `access-modal`, `allow`, `viewing-banner`, `revoke`, `mirror`, `progress-panel`, `observations`, `samples-btn` ...) are listed in `docs/TESTIDS.md` and exercised by `npm run e2e:golden` (steps G2b and G9 run today; G8 needs Lane B's run routes). Your own tests: `node scripts/test-lane-d.mjs` (25 API checks) and `node scripts/e2e-lane-d.mjs` (18 browser checks).
+
+After the merge reset your branch to main: `git fetch origin`, `git checkout lane-d-miti`, `git reset --hard origin/main`.
+

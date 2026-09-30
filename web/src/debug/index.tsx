@@ -225,7 +225,7 @@ export function DebugPanel() {
       {incoming.length > 0 && (
         <Overlay>
           <div role="dialog" aria-modal="true" aria-label="Debug access request" data-testid="access-modal"
-            style={{ position: 'fixed', inset: 0, background: 'rgba(21,21,21,0.35)', display: 'grid', placeItems: 'center', zIndex: 60 }}>
+            style={{ position: 'fixed', inset: 0, background: 'var(--overlay)', display: 'grid', placeItems: 'center', zIndex: 60 }}>
             <div style={{ background: 'var(--panel)', border: '1px solid var(--ink)', borderRadius: 4, padding: 18, width: 'min(380px, 92vw)' }}>
               <div className="eyebrow">Access request</div>
               <p style={{ margin: '8px 0 14px', fontSize: 14 }}>
