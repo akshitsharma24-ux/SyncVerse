@@ -6,7 +6,7 @@ Collaborative real-time code editor for remote STEM education (PS 02). Overnight
 - Long-term design: `SyncVerse_Master_Blueprint.pdf`
 - Live status and handoff: `docs/TRACKER.md`
 - Demo script and demo-morning checklist: `docs/DEMO.md`; UI test contract for lane panels: `docs/TESTIDS.md`
-- Conventions for people and Claude sessions: `CLAUDE.md`
+- Conventions for everyone who contributes: `CONTRIBUTING.md`
 
 ## Architecture
 
@@ -103,7 +103,7 @@ npm run dev
 
 - Work on your own lane branch and commit with the task ID: `P-B1: poll Judge0 until done`.
 - Merge `origin/main` into your branch often. When a task is done and `npm run typecheck`, `npm run smoke` and `npm run e2e:golden` pass, merge your branch into `main`.
-- No `Co-Authored-By` or "generated with" lines in commits (see CLAUDE.md).
+- No `Co-Authored-By` or "generated with" lines in commits (see CONTRIBUTING.md).
 ## Layout
 
 ```

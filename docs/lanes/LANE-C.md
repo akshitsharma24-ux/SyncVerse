@@ -1,6 +1,6 @@
 ﻿# Lane C - AI explain and patch  (owner: Rahil)
 
-Read `CLAUDE.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
+Read `CONTRIBUTING.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
 
 **Folders you may edit:** `web/src/ai/`, `server/routes/ai.ts`
 

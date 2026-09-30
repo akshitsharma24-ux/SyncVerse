@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { RunResult, RunStatus } from '@syncverse/shared';
-import { useEditor, useSessionUser } from '../session';
+import { useActiveFile, useEditor, useSessionUser } from '../session';
 import { useRunner } from './useRunner';
 import { flashLine } from './markers';
 import { ALL_LANGUAGES, LANGUAGE_LABEL, setLanguage, useLanguage, type Lang } from './language';
@@ -53,6 +53,14 @@ export function RunPanel() {
   useEffect(() => {
     if (info && chosen !== language) setLanguage(language); // the saved choice is not available here: go back to Python
   }, [info, chosen, language]);
+  // Switching to another file (or changing the open file's language) selects that language to run. The first look keeps the saved choice.
+  const file = useActiveFile();
+  const seenFile = useRef<boolean>(false);
+  useEffect(() => {
+    if (!file) return;
+    if (seenFile.current && (ALL_LANGUAGES as string[]).includes(file.language)) setLanguage(file.language as Lang);
+    seenFile.current = true;
+  }, [file?.id, file?.language]); // eslint-disable-line react-hooks/exhaustive-deps
   const runRef = useRef(() => {});
   runRef.current = () => void run(stdin, language);
 
@@ -166,7 +174,8 @@ export function RunPanel() {
           />
           {language !== 'python' && (
             <div className="rc-hint" data-testid="run-language-hint">
-              Running as {LANGUAGE_LABEL[language]}. Editor colours stay Python for now.
+              Running as {LANGUAGE_LABEL[language]}.
+              {file && file.language !== language && ` The open file ${file.name} is set to ${LANGUAGE_LABEL[file.language as Lang] ?? file.language}; change its language in the file bar to match.`}
             </div>
           )}
         </div>

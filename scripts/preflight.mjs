@@ -144,27 +144,8 @@ if (!env('LLM_API_KEY')) {
   add('WARN', 'LLM (AI tutor)', 'LLM_API_KEY is not set in .env (Rahil / P-C0)');
 } else if (NO_LLM) {
   add('SKIP', 'LLM (AI tutor)', 'key is set; live call skipped (--no-llm)');
-} else if (env('LLM_API_KEY').startsWith('sk-ant-')) {
-  try {
-    const t0 = Date.now();
-    const model = env('LLM_MODEL_FAST') || 'claude-haiku-4-5-20251001';
-    const r = await withTimeout(
-      fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': env('LLM_API_KEY'), 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model, max_tokens: 16, messages: [{ role: 'user', content: 'Reply with the single word: ok' }] }),
-      }),
-      15000,
-      'LLM call',
-    );
-    const j = await r.json();
-    if (!r.ok) throw new Error(`HTTP ${r.status}: ${j?.error?.message ?? 'error'}`);
-    add('OK', 'LLM (AI tutor)', `${model} answered "${(j.content?.[0]?.text ?? '').trim().slice(0, 20)}" in ${Date.now() - t0} ms`);
-  } catch (e) {
-    add('FAIL', 'LLM (AI tutor)', e.message);
-  }
 } else {
-  add('SKIP', 'LLM (AI tutor)', 'key is set, but only Anthropic keys (sk-ant-...) have a built-in live check; test your provider with its own hello-world (P-C0)');
+  add('SKIP', 'LLM (AI tutor)', 'key is set; test your provider with its own hello-world (P-C0), there is no built-in live check');
 }
 
 // ---------------------------------------------------------------------------------------------- report

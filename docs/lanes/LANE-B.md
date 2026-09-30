@@ -1,6 +1,6 @@
 ﻿# Lane B - Run pipeline, console, quality  (owner: Simrit)
 
-Read `CLAUDE.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
+Read `CONTRIBUTING.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
 
 **Folders you may edit:** `web/src/console/`, `web/src/quality/`, `server/routes/run.ts`, `server/routes/analyze.ts`
 

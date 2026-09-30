@@ -73,7 +73,7 @@ async function loadSample(p, id) {
 }
 async function run(p, stdin) {
   if (await exists(p, 'stdin-input')) await p.fill(tid('stdin-input'), stdin);
-  await p.click(tid('run-button'));
+  await p.click(tid('run-btn'));
 }
 let raviRunId = '';
 
@@ -153,8 +153,8 @@ await step('G7', 'Quality panel lists findings in every category', async () => {
   await needPanel(mei, 'quality-panel', 'Lane B quality panel');
   await loadSample(mei, 'quality-smells');
   await tab(mei, 'Quality');
-  await mei.waitForFunction((s) => document.querySelectorAll(s).length >= 5, tid('quality-finding'), { timeout: 15000 });
-  const cats = new Set(await mei.$$eval(tid('quality-finding'), (els) => els.map((e) => e.getAttribute('data-category'))));
+  await mei.waitForFunction((s) => document.querySelectorAll(s).length >= 5, tid('quality-item'), { timeout: 15000 });
+  const cats = new Set(await mei.$$eval(tid('quality-group'), (els) => els.map((e) => e.getAttribute('data-category'))));
   for (const c of ['formatting', 'naming', 'smell', 'complexity', 'security']) if (!cats.has(c)) throw new Error('no finding in category ' + c + ' (got ' + [...cats].join(', ') + ')');
 }, { after: ['G2'] });
 
@@ -174,8 +174,13 @@ await step('G8', 'Debug access: request, allow, mentor sees the console, revoke;
   await check(asha, 'mentor while only requested', 403);
   await ravi.click(tid('allow'));
   await asha.waitForSelector(tid('mirror'), { state: 'visible', timeout: 8000 });
-  const mirror = await asha.textContent(tid('mirror'));
-  if (!/IndexError|list index/.test(mirror)) throw new Error("mirror does not show Ravi's error: " + JSON.stringify(mirror.slice(0, 80)));
+  // The mirror shows "Loading..." while it fetches Ravi's latest run: wait for the run, do not read early.
+  await asha
+    .waitForFunction((sel) => /IndexError|list index/.test(document.querySelector(sel)?.textContent ?? ''), tid('mirror'), { timeout: 10000 })
+    .catch(async () => {
+      const mirror = (await asha.textContent(tid('mirror')).catch(() => '')) ?? '';
+      throw new Error("mirror does not show Ravi's error: " + JSON.stringify(mirror.slice(0, 80)));
+    });
   await check(asha, 'mentor while active', 200);
   await check(mei, 'other student while active', 403);
   await ravi.waitForSelector(tid('viewing-banner'), { state: 'visible', timeout: 5000 });
@@ -185,19 +190,21 @@ await step('G8', 'Debug access: request, allow, mentor sees the console, revoke;
 }, { after: ['G4'] });
 
 await step('G9', 'Progress page shows observation sentences (demo history, no scores)', async () => {
-  await needPanel(ravi, 'progress-panel', 'Lane D progress page');
+  // A person who has not run anything yet (the demo history is only added for people with no real runs, so it never overwrites real work).
+  const zed = await join('Zed', 'student');
+  await needPanel(zed, 'progress-panel', 'Lane D progress page');
   // Independent of runs and AI: load the demo history from the Samples menu, like the live demo can.
-  await ravi.click(tid('samples-btn'));
-  await ravi.getByRole('menuitem', { name: /load demo history/i }).click();
-  await tab(ravi, 'Progress');
+  await zed.click(tid('samples-btn'));
+  await zed.getByRole('menuitem', { name: /load demo history/i }).click();
+  await tab(zed, 'Progress');
   // The page first shows "No runs yet" while the seed request is in flight: wait for the real sentence, do not read early.
-  await ravi
+  await zed
     .waitForFunction((s) => /retry recommended/i.test(document.querySelector(s)?.textContent ?? ''), tid('observations'), { timeout: 15000 })
     .catch(async () => {
-      const now = (await ravi.textContent(tid('observations')).catch(() => '')) ?? '';
+      const now = (await zed.textContent(tid('observations')).catch(() => '')) ?? '';
       throw new Error('no "Retry recommended" observation after loading demo history; page says: ' + JSON.stringify(now.trim().slice(0, 120)));
     });
-  const t = (await ravi.textContent(tid('observations'))).trim();
+  const t = (await zed.textContent(tid('observations'))).trim();
   if (/\b(score|rank|grade)\b/i.test(t)) throw new Error('observations mention a score, rank or grade');
 });
 

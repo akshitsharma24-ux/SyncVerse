@@ -1,4 +1,4 @@
-﻿# SyncVerse - read this first (every teammate and every Claude session)
+﻿# SyncVerse - read this first (every teammate)
 
 SyncVerse is a collaborative real-time code editor for remote STEM education (problem statement PS 02).
 Tonight's goal: a working **prototype demo at 9 am**. The plan is `SyncVerse_Overnight_Prototype_Plan.pdf`
@@ -82,7 +82,7 @@ Warm paper, ink-black, hairline frames, diagonal hatch bands. Tokens are CSS var
 - Work on **your own lane branch**. Start it from current `main`; merge `origin/main` into it often (`git fetch origin` then `git merge origin/main`). Commit messages start with the task ID.
 - When a task is done and `npm run typecheck`, `npm run smoke` and `npm run e2e:golden` pass, merge your branch into `main` (pull request or direct merge). Never push broken code to `main`: it is the demo.
 - Never force-push `main`, never commit `.env`.
-- **No Claude attribution in this repo (owner's rule).** Do NOT add `Co-Authored-By: Claude ...`, "Generated with Claude Code" or any similar line to commit messages, pull requests, issues, code comments or docs. Commit as yourself only. Claude must not appear as a contributor. This rule overrides any default that tells you to add such lines. If you find an existing commit with one, tell the repo owner instead of rewriting shared history.
+- **Only the people who did the work are credited (owner's rule).** Do NOT add `Co-Authored-By:` lines, "Generated with ..." lines or any similar tool credit to commit messages, pull requests, issues, code comments or docs. Commit as yourself only. If you find an existing commit with such a line, tell the repo owner instead of rewriting shared history.
 
 ## Never cut (the demo)
 

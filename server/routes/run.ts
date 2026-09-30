@@ -450,7 +450,8 @@ function executeLocal(input: ExecInput): Promise<ExecOutcome> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sv-run-'));
   fs.writeFileSync(path.join(dir, runner.file), input.source, 'utf8');
   const env: NodeJS.ProcessEnv = {};
-  for (const k of ['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP', 'HOME']) if (process.env[k]) env[k] = process.env[k];
+  // LOCALAPPDATA and USERPROFILE: the Windows Python launcher needs them, else it re-downloads a runtime on every run (7 s). No secrets in them.
+  for (const k of ['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP', 'HOME', 'LOCALAPPDATA', 'USERPROFILE', 'APPDATA', 'ProgramData', 'windir']) if (process.env[k]) env[k] = process.env[k];
   return new Promise((resolve, reject) => {
     const started = Date.now();
     let out = '';

@@ -14,12 +14,12 @@ it is how the test knows a panel is real and not the placeholder.
 |---|---|---|
 | `run-panel` | root of the console panel | |
 | `stdin-input` | the stdin text box | fillable (`input` or `textarea`) |
-| `run-button` | runs the current editor text | click starts a run |
+| `run-btn` | runs the current editor text | click starts a run (Lane B's real name) |
 | `run-status` | status badge of the latest run | `data-status` = the RunStatus value (`success`, `runtime_error`, `compile_error`, `timeout`, `memory_limit`, `service_error`, `queued`, `running`) and `data-run-id` = the run id. Text is human ("Runtime error") |
-| `run-stdout` | stdout of the latest run | text content is the output |
-| `run-stderr` | stderr of the latest run | text content |
+| `run-stdout` | stdout of the latest run | text content is the output; shown while the stdout tab is selected (default) |
+| `run-stderr` | stderr of the latest run | text content; shown while the stderr tab (`tab-stderr`) is selected |
 | `quality-panel` | root of the quality panel | |
-| `quality-finding` | one row per finding | `data-category` (formatting, naming, smell, complexity, security) and `data-rule` |
+| `quality-group` / `quality-item` | one group per category (`data-category`: formatting, naming, smell, complexity, security), one `quality-item` per finding (`data-rule`, `data-line`) | |
 
 Error marking: after a failed run call `useEditor().setMarkers(...)`; the test looks for Monaco's `.squiggly-error`.
 Miti's debug mirror reads `GET /api/runs/latest?ownerId=` from you, so that route must exist and respect `canView`.

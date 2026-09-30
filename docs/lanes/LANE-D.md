@@ -1,6 +1,6 @@
 ﻿# Lane D - Debug access, progress, demo data  (owner: Miti)
 
-Read `CLAUDE.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
+Read `CONTRIBUTING.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
 
 **Folders you may edit:** `web/src/debug/`, `web/src/progress/`, `web/src/demo/`, `server/routes/debug.ts`, `server/routes/events.ts`
 

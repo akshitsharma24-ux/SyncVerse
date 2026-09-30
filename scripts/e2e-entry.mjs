@@ -213,7 +213,7 @@ await check('a crashing panel is contained: only that panel shows an error card,
   await p.evaluate(() => window.__sv.editor.replaceAll('still_works = 1\n'));
   if ((await p.evaluate(() => window.__sv.editor.getValue())) !== 'still_works = 1\n') throw new Error('editor broke');
   await p.getByRole('tab', { name: 'Quality', exact: true }).click();
-  await p.waitForFunction(() => document.body.textContent.includes('Code quality'));
+  await p.waitForSelector('[data-testid="quality-panel"]');
   await p.waitForSelector('[data-testid="topbar"]');
   const crashes = await p.locator('[data-testid="panel-crash"]').count();
   await p.context().close();
