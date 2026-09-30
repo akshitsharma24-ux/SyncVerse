@@ -65,7 +65,7 @@ Status values: TODO, DOING, MERGED, BLOCKED. Windows assume a 5:30 pm start (see
 
 ## Log (newest last)
 
-- Lane D (branch lane-d-miti): P-D1..P-D3 built. `node scripts/test-lane-d.mjs` = 12 API checks PASS (grants, 403s, rate limit, seed, observation rule, mentor table). Typecheck and build clean. NOT yet checked in a real browser (modal/banner/mirror UI). Extra routes: GET /api/debug/grants, POST /api/demo/seed and /api/demo/reset. Event `category` from B/C is matched loosely (index/name/syntax/recursion/timeout). NOT done: P-D0 LiveKit keys (needs Miti's account), P-D4 tiles. Grants keep roomCode internally (DebugGrant type unchanged).
+- Lane D (branch lane-d-miti): P-D1..P-D3 built. `node scripts/test-lane-d.mjs` = 12 API checks PASS; `node scripts/e2e-lane-d.mjs` = 9 real-browser checks PASS (needs npm run dev) (grants, 403s, rate limit, seed, observation rule, mentor table). Typecheck and build clean. Extra routes: GET /api/debug/grants, POST /api/demo/seed and /api/demo/reset. Event `category` from B/C is matched loosely (index/name/syntax/recursion/timeout). NOT done: P-D0 LiveKit keys (needs Miti's account), P-D4 tiles. Grants keep roomCode internally (DebugGrant type unchanged).
 
 - Plan PDFs written (blueprint 33 pages, overnight plan 12 pages).
 - P-A1: root config, shared contracts, manifests, `npm install` done. Continuing with server and web stubs.

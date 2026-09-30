@@ -1,0 +1,65 @@
+// Lane D browser test (needs `npm run dev`): debug access flow, samples menu, progress page. Owner: Lane D.
+import { chromium } from 'playwright-core';
+const BASE = process.env.E2E_BASE ?? 'http://localhost:5173';
+const room = 'ed-' + Math.random().toString(36).slice(2, 7);
+const out = [];
+const check = async (n, fn) => { try { await fn(); out.push([1, n]); } catch (e) { out.push([0, n + ' :: ' + String(e.message).split('\n')[0]]); } };
+const browser = await chromium.launch({ channel: process.env.E2E_CHANNEL ?? 'msedge', headless: true });
+const mk = async (name, role) => {
+  const p = await (await browser.newContext({ viewport: { width: 1300, height: 800 } })).newPage();
+  p.on('pageerror', (e) => console.log('[pageerror ' + name + ']', e.message));
+  await p.goto(`${BASE}/?name=${name}&role=${role}&room=${room}`);
+  await p.waitForSelector('.monaco-editor', { timeout: 20000 });
+  return p;
+};
+const S = await mk('Stu', 'student'), M = await mk('Mia', 'mentor');
+for (const p of [S, M]) await p.click('[role=tab]:has-text("Debug")');
+const T = { timeout: 8000 };
+
+await check('mentor sees Stu with a Request access button', () => M.waitForSelector('[data-testid^=request-]', T));
+await check('request opens the Allow/Deny modal for the student', async () => {
+  await M.click('[data-testid^=request-]');
+  await S.waitForSelector('[data-testid=access-modal]', T);
+});
+await check('deny closes modal and tells mentor nothing is granted', async () => {
+  await S.click('[data-testid=deny]');
+  await S.waitForSelector('[data-testid=access-modal]', { state: 'detached', ...T });
+  await M.waitForSelector('text=declined', T);
+});
+await check('request again, allow: mentor gets mirror, student gets banner', async () => {
+  await M.click('[data-testid^=request-]');
+  await S.waitForSelector('[data-testid=access-modal]', T);
+  await S.click('[data-testid=allow]');
+  await M.waitForSelector('[data-testid=mirror]', T);
+  await S.waitForSelector('[data-testid=viewing-banner]', T);
+});
+await check('banner visible even with the Debug tab not active', async () => {
+  await S.click('[role=tab]:has-text("Progress")');
+  await S.waitForSelector('[data-testid=viewing-banner]', T);
+});
+await check('revoke removes the mirror instantly', async () => {
+  await S.click('[data-testid=revoke]');
+  await M.waitForSelector('[data-testid=mirror]', { state: 'detached', ...T });
+  await S.waitForSelector('[data-testid=viewing-banner]', { state: 'detached', ...T });
+});
+await check('Samples menu loads a program into BOTH editors', async () => {
+  await M.click('[data-testid=samples-btn]');
+  await M.click('[role=menuitem]:has-text("name error")');
+  for (const p of [S, M]) await p.waitForFunction(() => window.__sv.editor.getValue().includes('totl'), null, T);
+});
+await check('Load demo history shows observations for the student', async () => {
+  await S.click('[data-testid=samples-btn]');
+  await S.click('text=Load demo history');
+  await S.click('[role=tab]:has-text("Progress")');
+  await S.waitForSelector('[data-testid=observations] >> text=Retry recommended', T);
+});
+await check('mentor table lists demo students and flags stuck', async () => {
+  await M.click('[role=tab]:has-text("Progress")');
+  await M.waitForSelector('[data-testid=mentor-table] >> text=Asha', T);
+  await M.waitForSelector('[data-testid=mentor-table] >> text=stuck', T);
+});
+await S.screenshot({ path: process.env.TEMP + '/lane-d-student.png' });
+await M.screenshot({ path: process.env.TEMP + '/lane-d-mentor.png' });
+await browser.close();
+let f = 0; for (const [ok, n] of out) { console.log((ok ? 'PASS ' : 'FAIL ') + n); if (!ok) f++; }
+process.exit(f ? 1 : 0);
