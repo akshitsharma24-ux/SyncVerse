@@ -2,6 +2,7 @@
 // Needs the dev servers running:  npm run dev      Then:  node scripts/e2e-lane-d-assist.mjs   (E2E_SHOTS=<dir> saves screenshots)
 import { createRequire } from 'node:module';
 import { chromium } from 'playwright-core';
+import { openTool } from './lib/tools.mjs';
 
 const require = createRequire(import.meta.url);
 const axePath = require.resolve('axe-core/axe.min.js');
@@ -29,7 +30,7 @@ const mk = async (name, role) => {
   page.on('pageerror', (e) => console.log(`[pageerror ${name}]`, e.message));
   await page.goto(`${BASE}/?name=${name}&role=${role}&room=${room}`);
   await page.waitForSelector('.monaco-editor', { timeout: 20000 });
-  await page.click('[role=tab]:has-text("Debug")');
+  await openTool(page, 'Debug');
   return page;
 };
 const setCode = (p, t) => p.evaluate((x) => window.__sv.editor.replaceAll(x), t);

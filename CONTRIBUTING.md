@@ -49,13 +49,13 @@ Two people on one laptop: open two **tabs** (each tab is a different user). Shor
 
 ## Look and feel (use it in your panels)
 
-Warm paper, ink-black, hairline frames, diagonal hatch bands. Tokens are CSS variables in `web/src/index.css`; do not hard-code colours.
+The frontend is **Quiet Studio**: charcoal surfaces, warm white text, one muted olive accent (`--accent`). Tokens are CSS variables in `web/src/studio/studio.css` (base rules in `web/src/index.css`); do not hard-code colours. The app is dark only (`<html data-theme="dark">`); there is no theme toggle. The previous light and dark "paper and ink" frontend lives in `frontend-old/` and is not used.
 
-- Colours: `var(--paper)` page, `var(--panel)` panel, `var(--ink)` text and borders, `var(--muted)` secondary text, `var(--rule-soft)` light borders, `var(--danger)` / `var(--ok)` / `var(--warn)`. **Red is only for errors.** People colours (cursors, avatars) come from `usePresence()`.
-- **Dark theme:** there is a light and a dark theme (toggle in the top bar, remembered per browser, first visit follows the OS). `<html data-theme="light|dark">` swaps the same CSS variables, so **if you only use variables your panel is themed for free**. Never hard-code a colour (`#fff`, `white`, `rgba(0,0,0,..)`); use `var(--on-ink)` for text on a black button, `var(--overlay)` for modal scrims, `var(--hatch-soft|mid|strong)` for hatch bands, `var(--err-bg)` / `var(--danger-bg)` for error fills. Check your panel in both themes; `npm run e2e:a11y` audits every tab in both.
+- Colours: `var(--paper)` page, `var(--panel)` panel, `var(--ink)` text, `var(--muted)` secondary text, `var(--rule-soft)` borders, `var(--accent)` the one accent, `var(--danger)` / `var(--ok)` / `var(--warn)`. **Red is only for errors.** People colours (cursors, avatars) come from `usePresence()`. **If you only use variables, your panel matches the shell.** Use `var(--overlay)` for modal scrims.
+- Learning tools are the list at the top of `web/src/studio/StudioShell.tsx` (Understand, Together, Whiteboard, Code quality, Debug, Your progress). To add one, add a line there; the side panel, the picker and the keyboard navigation pick it up.
 - Fonts: Geist (text) and Geist Mono (code, numbers, eyebrows), bundled locally so the app works offline.
 - Classes: `btn` (black), `btn btn-outline`, `btn-sm`, `btn-block`; `input` (`input code` for monospace), `field`, `seg` (segmented control), `eyebrow` (small mono caps label), `mono`, `panel` / `panel-head`. Icons: `<Icon name="sparkle" />` from `web/src/shell/icons.tsx`.
-- Your panel renders inside a tab or a panel that already has padding and a border. Don't add another outer card; use `PanelStub` only while the real panel is unbuilt.
+- Your panel renders inside the learning panel, which already has padding and a border. Don't add another outer card; use `PanelStub` only while the real panel is unbuilt.
 - Gotcha: our CSS in `index.css` is unlayered and beats Tailwind utilities, so a Tailwind class like `hidden` will NOT override `.btn`'s display or an inline `style={{display}}`. Use the `hide-sm` / `hide-md` helper classes, or conditional rendering.
 - Keep `data-testid` hooks the tests rely on (see `scripts/e2e-*.mjs`). Add your own for new features.
 

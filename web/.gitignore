@@ -1,7 +1,3 @@
 node_modules/
 dist/
 .vite/
-verification/*.png
-verification/*.json
-verification/*.log
-verification/original-head.txt

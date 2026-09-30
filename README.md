@@ -9,6 +9,25 @@ Collaborative real-time code editor for remote STEM education (PS 02). Overnight
 - Conventions for everyone who contributes: `CONTRIBUTING.md`
 - Lane C five-part plan and account handoff: `PlanLaneC.md`
 
+## What it does (problem statement PS 02)
+
+| Requirement | Where to see it |
+|---|---|
+| Real-time multi-user editing | The shared editor: Monaco + Yjs, labelled cursors, presence, several files per room, version history, Tab snippets (Java `sout`, `fori`, ...) |
+| Integrated video chat | **Together** tool (LiveKit): camera, mic, screen share, chat |
+| AI assistant that explains errors to beginners | **Understand** tool: explain a failed run, then review a patch and Accept or Reject it |
+| Live code execution in a sandbox | The console. Real sandbox through Judge0 when `JUDGE0_URL` is set in `.env`; without it a clearly labelled demo runner (Python and JavaScript, not sandboxed) |
+| Automated code quality analysis | **Code quality** tool: formatting, naming, smells, complexity, security (Python rules) |
+| Collaborative debugging | **Debug** tool: a mentor asks, the student allows; read-only mirror, point at a line, and with "assist" re-run the code and suggest an edit the student accepts or rejects |
+| Personalized learning progress | **Your progress** tool: observations and next concepts from real runs, no scores or rankings |
+| Extra: whiteboard | **Whiteboard** tool: everyone draws on one page, live |
+
+## Frontends
+
+`web/` is the default frontend, the dark **Quiet Studio** design (entry page, resizable workspace, learning tools in a side panel).
+The previous "paper and ink" frontend is kept as a runnable backup in `frontend-old/`: `npm run dev:old` (port 5175).
+See `web/README.md` and `frontend-old/README.md`.
+
 ## Architecture
 
 ```mermaid
@@ -16,7 +35,7 @@ flowchart LR
   subgraph Browser["Browser (one per person)"]
     Editor["Monaco editor + Yjs"]
     Video["Video dock (LiveKit UI)"]
-    Panels["Console, AI, Quality, Debug, Progress, Board"]
+    Panels["Console, Understand, Together, Whiteboard, Code quality, Debug, Progress"]
   end
   subgraph Server["Node server (one laptop)"]
     Collab["collab.ts: live editing and presence"]
@@ -53,7 +72,7 @@ copy .env.example .env     # fill in keys as your lane needs them
 npm run dev
 ```
 
-- Web: http://localhost:5173  (proxies /api and /collab to the server)
+- Web: http://localhost:5173  (proxies /api and /collab to the server). The previous frontend: `npm run dev:old`, http://localhost:5175
 - Server: http://localhost:4000, health at http://localhost:4000/api/health (shows which keys are configured)
 - Two users on one machine: use two browser **tabs**. Skip the form with `/?name=Asha&role=mentor&room=loops-101`.
 - Other devices on the same network or phone hotspot: open `http://<your-laptop-ip>:5173`.
@@ -70,7 +89,7 @@ Rechecked on 2026-09-30 after the account handoff: Google's model-list endpoint 
 
 ### Lane C explanation panel (Part 2)
 
-Open the **AI** tab in the workspace. When Lane B sets `useWorkspace().lastRun` to a failed run, the panel offers **Explain with AI**, highlights the parser-reported line, and displays the explanation sections and concepts. It also shows loading, retry, no-run, and service-configuration states. The `AI can be wrong` note stays visible with every result. Until Lane B's run route stores results, the panel offers **Load sample into shared editor**: this replaces the shared editor contents with a fixed TypeError example but does not execute it. The matching synthetic run lets the panel call the Part 1 endpoint before Lane B lands. The AI request currently reaches Gemini, which is returning HTTP 503; normal failed runs still depend on Lane B records.
+Open the **Understand** tool in the workspace. When Lane B sets `useWorkspace().lastRun` to a failed run, the panel offers **Explain with AI**, highlights the parser-reported line, and displays the explanation sections and concepts. It also shows loading, retry, no-run, and service-configuration states. The `AI can be wrong` note stays visible with every result. Until Lane B's run route stores results, the panel offers **Load sample into shared editor**: this replaces the shared editor contents with a fixed TypeError example but does not execute it. The matching synthetic run lets the panel call the Part 1 endpoint before Lane B lands. The AI request currently reaches Gemini, which is returning HTTP 503; normal failed runs still depend on Lane B records.
 
 ### Lane C patch review (Part 3)
 
@@ -105,15 +124,17 @@ Useful commands (run the checks while `npm run dev` is running, after every merg
 | `npm run build` | production build |
 | `npm run smoke` | server health, Yjs sync/merge/presence/persistence (8 checks) |
 | `npm run e2e` | two real Edge sessions: live editing, cursors, presence, markers (13 checks) |
-| `npm run e2e:entry` | entry page: create/join flow, invite link, validation, phone/tablet layout, animated editor, workspace tabs and resizing, light/dark theme (15 checks) |
+| `npm run e2e:entry` | entry page: create/join flow, invite link, validation, phone/tablet layout, reduced motion, learning tools, keyboard access, dark theme, crash containment (14 checks) |
 | `npm run e2e:video` | video dock UI (real media needs LiveKit keys and two devices) |
 | `npm run e2e:golden` | the whole demo with three browsers; steps SKIP until a lane's panel exists (`-- --strict` on demo morning) |
-| `npm run e2e:a11y` | axe-core accessibility audit (WCAG A/AA) of the entry page and every workspace tab, in both light and dark themes |
+| `npm run e2e:a11y` | axe-core accessibility audit (WCAG A/AA) of the landing page, dialogs, every learning tool, the large whiteboard view, the drawer (20 audits) |
+| `npm run e2e:studio` | the Quiet Studio frontend end to end: landing page, real rooms, every tool, focus mode, resizing, layout memory, phones, axe |
+| `npm run e2e:call-layout` | the video dock's controls and chat at 260 to 650 px (a labelled fixture, no real call) |
 | `npm run verify:samples` | runs every planted-bug program with real Python and checks the shared fixtures |
 | `npm run preflight` | demo warm-up: env, ports, live sync, Judge0, LiveKit, LLM (`-- --strict` on demo morning) |
 | `npm run test:persist` | code survives a hard server restart (starts its own server on :4101) |
 | `npm run e2e:reconnect` | server dies mid-session: offline edits merge after reconnect (starts its own servers on :4300/:5300) |
-| `npm run e2e:whiteboard` | the shared whiteboard (Board tab): live drawing, tools, undo, eraser, clear, viewer and paused rules, junk data, large view, PNG, reload (17 checks) |
+| `npm run e2e:whiteboard` | the shared whiteboard (Whiteboard tool): live drawing, tools, undo, eraser, clear, viewer and paused rules, junk data, large view, PNG, reload (17 checks) |
 | `npm run e2e:snippets` | VS Code-style completion: Java `sout` + Tab, `fori`, members after a dot, java.util imports, Python / JS / C / C++ snippets, Enter never accepts (17 checks) |
 
 If an e2e run stalls while launching the browser, just run it again.
@@ -126,7 +147,7 @@ Repo: https://github.com/akshitsharma24-ux/SyncVerse
 
 | Branch | Owner | Lane |
 |---|---|---|
-| `main` | everyone | integrated, demo-ready work (skeleton + Lane A + shared tooling + Lane D so far) |
+| `main` | everyone | integrated, demo-ready work: all four lanes, the Quiet Studio frontend, whiteboard and snippets |
 | `lane-a-akshit` | Akshit | editor sync, presence, video, frontend design |
 | `lane-b-simrit` | Simrit | run pipeline, console, code quality |
 | `lane-c-rahil` | Rahil | AI explain and patch |
@@ -150,7 +171,8 @@ npm run dev
 
 ```
 shared/types.ts        contracts every lane imports (@syncverse/shared)
-web/src/               Vite + React shell; one folder per lane (editor, video, console, quality, ai, debug, progress, demo)
+web/src/               the default frontend (Quiet Studio): Vite + React; one folder per lane (editor, video, console, quality, ai, debug, progress, demo) plus studio/ (shell) and whiteboard/
+frontend-old/          the previous frontend, kept as a backup (npm run dev:old)
 server/                Express; routes/*.ts one file per lane; collab.ts is the Yjs WebSocket
 docs/TRACKER.md        status + handoff;  docs/lanes/  one file per lane
 scripts/smoke.mjs      automated checks

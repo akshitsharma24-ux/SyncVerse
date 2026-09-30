@@ -2,7 +2,9 @@
 
 Read `CONTRIBUTING.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
 
-**Folders you may edit:** `web/src/editor/`, `web/src/video/`, `server/collab.ts`, `server/routes/livekit.ts` (and the shell files, only in P-A1 or by agreement)
+**Frontend note:** `web/` is the Quiet Studio frontend (shell in `web/src/studio/`); the previous frontend is in `frontend-old/`. Panels are the same; the tab names in this file are now the learning tools (see `web/README.md`).
+
+**Folders you may edit:** `web/src/editor/`, `web/src/video/`, `web/src/whiteboard/`, `server/collab.ts`, `server/routes/livekit.ts` (and the shell files, only in P-A1 or by agreement)
 
 **Start without waiting:** You own the foundation. Everyone else builds against the stubs you pushed in P-A1, so keep the `EditorHandle`, `useEditor`, `usePresence` signatures stable while you replace the internals.
 

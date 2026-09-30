@@ -34,13 +34,13 @@ Do this in order. Stop and fix anything red.
 |---|---|---|---|---|
 | 1 | 0:00 | Presenter | "Learn to code together, understand it on your own." Mentor creates a room; two students join with the code or the invite link | entry page |
 | 2 | 0:30 | All | Everyone edits one file; point at the labelled cursors and the presence avatars | editor, presence |
-| 2b | 0:45 | Asha, Ravi | Optional, 20 s: Asha opens the **Board** tab and sketches a linked list (rectangles and arrows); Ravi sees it appear live and adds a label. In a Java file, Ravi types `sout`, presses **Tab**, and gets `System.out.println();` like in VS Code | whiteboard, editor completion |
-| 3 | 1:00 | Video | Join call in the Video tab; wave, share the screen for two seconds | video dock (needs keys + two devices) |
+| 2b | 0:45 | Asha, Ravi | Optional, 20 s: Asha opens the **Whiteboard** tool and sketches a linked list (rectangles and arrows); Ravi sees it appear live and adds a label. In a Java file, Ravi types `sout`, presses **Tab**, and gets `System.out.println();` like in VS Code | whiteboard, editor completion |
+| 3 | 1:00 | Video | Join call in the **Together** tool; wave, share the screen for two seconds | video dock (needs keys + two devices) |
 | 4 | 1:30 | Ravi, Mei | Samples menu, **"Stdin Average"**. Ravi runs with `3 4 5`, Mei runs with `10 20`. Different output, each only sees their own | run pipeline, private consoles |
-| 5 | 2:15 | Ravi | Samples menu, **"Index Error"**. Run. The line is marked. **Explain with AI**. Show patch: Reject (nothing changes), show again, Accept (both editors update) | error line, AI explain, patch |
-| 6 | 3:30 | Mei | Samples menu, **"Quality Sample"**. Quality tab lists findings in five categories | quality panel |
-| 7 | 4:00 | Asha, Ravi | Asha requests access to Ravi's session. Ravi allows. Asha sees Ravi's console. Ravi revokes; it disappears instantly | debug access |
-| 8 | 4:45 | Ravi | Progress tab: "retry recommended" observation, no scores | progress page |
+| 5 | 2:15 | Ravi | Samples menu, **"Index Error"**. Run. The line is marked. **Understand** tool, **Explain with AI**. Show patch: Reject (nothing changes), show again, Accept (both editors update) | error line, AI explain, patch |
+| 6 | 3:30 | Mei | Samples menu, **"Quality Sample"**. **Code quality** lists findings in five categories | quality panel |
+| 7 | 4:00 | Asha, Ravi | In the **Debug** tool Asha requests access to Ravi's session. Ravi allows (with "assist" if Asha should re-run the code and suggest an edit, which Ravi accepts or rejects). Asha sees Ravi's console. Ravi revokes; it disappears instantly | debug access |
+| 8 | 4:45 | Ravi | **Your progress**: "retry recommended" observation, no scores | progress page |
 | 9 | 5:15 | Presenter | Roadmap: execution canvas, predict-and-reflect checkpoints, classrooms. **Say plainly these are not built yet** | - |
 
 If a step's lane is not ready, skip it out loud ("this panel is next") rather than showing a placeholder.
@@ -57,7 +57,7 @@ If a step's lane is not ready, skip it out loud ("this panel is next") rather th
 |---|---|
 | Top bar chip says "Server offline" | The API died. Re-run `npm run dev` on the server laptop; rooms and code come back from disk |
 | "to set up" chip | Click it: it lists which key is missing. Add it to `.env`, restart the server |
-| Run does nothing / Judge0 error | Use the local fallback runner if Lane B built it, and say "demo runner, not the sandbox" |
+| Run does nothing / Judge0 error | Set `RUNNER=local` in `.env` and restart: the demo runner (Python and JavaScript) takes over; say "demo runner, not the sandbox" |
 | AI slow or down | The planted programs have pre-baked explanations (`shared/samples.ts`); Lane C serves them from cache |
 | Video will not connect | Use a normal video call in another window and say so |
 | Wi-Fi drops | Phone hotspot; everyone reconnects; edits made offline merge when back |
@@ -65,7 +65,7 @@ If a step's lane is not ready, skip it out loud ("this panel is next") rather th
 
 ## Say this if asked
 
-- No accounts yet: a person is a name and a room code. State lives on the server laptop and resets if its data folder is deleted.
+- Accounts are optional: a guest is a name and a room code; a signed-in person keeps their name and finds their rooms. State lives on the server laptop (rooms and accounts are saved under `server/data/`) and resets if that folder is deleted.
 - Privacy is enforced in the API: a run or explanation is readable only by its owner or someone they allowed.
 - AI explanations can be wrong; the student always decides whether a patch is applied.
 - It runs locally, not deployed. Roadmap: a real database and accounts, more languages, the execution canvas, predict-and-reflect, classrooms.
