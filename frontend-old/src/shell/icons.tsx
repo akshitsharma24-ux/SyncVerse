@@ -2,10 +2,6 @@
 import type { ReactNode } from 'react';
 
 const paths: Record<string, ReactNode> = {
-  sidebar: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></>,
-  terminal: <><path d="m4 6 6 6-6 6M13 18h7"/></>,
-  panel: <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></>,
-  minus: <path d="M5 12h14"/>,
   video: (
     <>
       <rect x="3" y="6" width="12" height="12" rx="2" />
@@ -84,6 +80,22 @@ const paths: Record<string, ReactNode> = {
   ),
   pencil: <path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19l-4 1z" />,
   chevron: <path d="m6 9 6 6 6-6" />,
+  board: (
+    <>
+      <rect x="3" y="4" width="18" height="12" rx="2" />
+      <path d="m7 12 3-3 3 2 4-4M9 20l1.5-4M15 20l-1.5-4" />
+    </>
+  ),
+  line: <path d="M5 19 19 5" />,
+  arrowline: <path d="M5 19 19 5M10 5h9v9" />,
+  rect: <rect x="4" y="6" width="16" height="12" rx="1" />,
+  ellipse: <ellipse cx="12" cy="12" rx="8.5" ry="6" />,
+  text: <path d="M5 7V5h14v2M12 5v14M9 19h6" />,
+  eraser: <path d="M8 19h12M5.5 14.5 14 6l5 5-7.5 7.5a2 2 0 0 1-2.8 0l-3.2-3.2a2 2 0 0 1 0-2.8z" />,
+  undo: <path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-4" />,
+  trash: <path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13M10 11v6M14 11v6" />,
+  expand: <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />,
+  shrink: <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />,
   eye: (
     <>
       <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" />

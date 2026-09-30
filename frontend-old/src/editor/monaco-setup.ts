@@ -19,11 +19,17 @@ import 'monaco-editor/esm/vs/basic-languages/css/css.contribution';
 import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution';
 import 'monaco-editor/esm/vs/basic-languages/xml/xml.contribution';
+// The lean core has no completion list and no snippet support of its own: pull in just those two contributions.
+import 'monaco-editor/esm/vs/editor/contrib/snippet/browser/snippetController2';
+import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import { registerSnippets } from './snippets';
 
 self.MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
 };
+
+registerSnippets(); // Tab-completable snippets (Java sout, fori, ...) and completions; see snippets.ts
 
 monaco.editor.defineTheme('syncverse', {
   base: 'vs',
@@ -59,27 +65,27 @@ monaco.editor.defineTheme('syncverse-dark', {
   base: 'vs-dark',
   inherit: true,
   rules: [
-    { token: 'keyword', foreground: 'B3BCA6' },
-    { token: 'string', foreground: 'BBCB9E' },
-    { token: 'number', foreground: 'C9B995' },
-    { token: 'comment', foreground: '89967A', fontStyle: 'italic' },
+    { token: 'keyword', foreground: 'F08BBD' },
+    { token: 'string', foreground: '8FD9A0' },
+    { token: 'number', foreground: 'F0A060' },
+    { token: 'comment', foreground: '8F8B80', fontStyle: 'italic' },
     { token: 'identifier', foreground: 'EFECE4' },
     { token: 'delimiter', foreground: 'A8A397' },
     { token: 'operator', foreground: 'CFCABD' },
   ],
   colors: {
-    'editor.background': '#191C16',
+    'editor.background': '#1D1C19',
     'editor.foreground': '#EFECE4',
     'editorLineNumber.foreground': '#6F6B62',
     'editorLineNumber.activeForeground': '#EFECE4',
-    'editor.lineHighlightBackground': '#23291C',
-    'editor.lineHighlightBorder': '#23291C',
+    'editor.lineHighlightBackground': '#24231F',
+    'editor.lineHighlightBorder': '#24231F',
     'editorCursor.foreground': '#EFECE4',
-    'editor.selectionBackground': '#3C4930',
-    'editor.inactiveSelectionBackground': '#2F3B25',
-    'editorIndentGuide.background1': '#2D3626',
-    'editorIndentGuide.activeBackground1': '#4B5B3D',
-    'editorGutter.background': '#191C16',
+    'editor.selectionBackground': '#3C3930',
+    'editor.inactiveSelectionBackground': '#322F28',
+    'editorIndentGuide.background1': '#2D2B27',
+    'editorIndentGuide.activeBackground1': '#4A463E',
+    'editorGutter.background': '#1D1C19',
     'scrollbarSlider.background': '#38352F99',
     'scrollbarSlider.hoverBackground': '#6F6B62AA',
   },

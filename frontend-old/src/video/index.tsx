@@ -43,7 +43,7 @@ export function VideoDock() {
 
   if (conn) {
     return (
-      <div className="studio-video-live" data-testid="video-live" data-audio-only={low || undefined} data-listen-only={listenOnly || undefined}>
+      <div style={{ height: '100%', minHeight: 420 }} data-testid="video-live" data-audio-only={low || undefined} data-listen-only={listenOnly || undefined}>
         <LiveKitRoom
           data-lk-theme="default"
           style={{ height: '100%' }}

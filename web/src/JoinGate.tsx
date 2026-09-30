@@ -1,277 +1,91 @@
-﻿/**
- * Entry page: create or join a room. Owner: Lane A.
- * Dev shortcut (used by the automated tests): /?name=Asha&role=mentor&room=loops-101 joins immediately.
- * Each browser TAB is a separate person (session lives in sessionStorage), so two tabs = two users.
- */
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { Role, RoomSummary } from '@syncverse/shared';
 import { api } from './api';
 import { useAuth } from './auth';
-import { setLowBandwidth, useLowBandwidth } from './lowbandwidth';
 import { useSession } from './session';
 import { AccountButton } from './shell/Account';
-import { Logo } from './shell/Logo';
 import { Icon } from './shell/icons';
-import { ThemeToggle } from './shell/ThemeToggle';
-import { HeroMock } from './landing/HeroMock';
-import { Features } from './landing/Features';
+import { Dialog } from './shell/Dialog';
+import { Brand } from './studio/Brand';
+import { StudioPreview } from './studio/StudioPreview';
 
-const ADJ = ['swift', 'quiet', 'bright', 'calm', 'keen', 'lucky', 'steady', 'sunny', 'nimble', 'vivid'];
-const NOUN = ['loop', 'array', 'stack', 'queue', 'graph', 'string', 'vector', 'bit', 'node', 'tuple'];
-const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
-const makeCode = () => `${pick(ADJ)}-${pick(NOUN)}-${Math.floor(10 + Math.random() * 90)}`;
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
-
-type Mode = 'create' | 'join';
-
-const RECENT_KEY = 'sv.recent';
-interface Recent {
-  code: string;
-  role: Role;
-  at: number;
-}
-function readRecent(): Recent[] {
-  try {
-    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
-    return Array.isArray(v) ? v.filter((r) => r && typeof r.code === 'string').slice(0, 5) : [];
-  } catch {
-    return [];
-  }
-}
-function rememberRoom(code: string, role: Role): void {
-  try {
-    const next = [{ code, role, at: Date.now() }, ...readRecent().filter((r) => r.code !== code)].slice(0, 5);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
-  } catch {
-    /* private mode: fine */
-  }
-}
-const ago = (t: number) => {
-  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
-  return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : new Date(t).toLocaleDateString();
-};
-
-function readName(): string {
-  try {
-    return localStorage.getItem('syncverse.name') ?? '';
-  } catch {
-    return '';
-  }
-}
+const makeCode = () => `studio-${['loop', 'array', 'node', 'graph', 'stack'][Math.floor(Math.random() * 5)]}-${Math.random().toString(36).slice(2, 7)}`;
+function readRecent(): RoomSummary[] { try { return JSON.parse(localStorage.getItem('studio.recent') ?? '[]'); } catch { return []; } }
 
 export default function JoinGate() {
   const { join } = useSession();
-  const params = new URLSearchParams(location.search);
   const { account } = useAuth();
-  const lowBw = useLowBandwidth();
-  const [mode, setMode] = useState<Mode>(params.get('room') ? 'join' : 'create');
-  const [typedName, setName] = useState(params.get('name') ?? readName());
-  const name = account ? account.displayName : typedName; // a signed-in person's name comes from their profile
-  const askedRole = params.get('role');
-  const [role, setRole] = useState<Role>(askedRole === 'mentor' || askedRole === 'viewer' ? askedRole : 'student');
-  const [rooms, setRooms] = useState<RoomSummary[]>([]);
+  const [params] = useState(() => new URLSearchParams(location.search));
+  const [mode, setMode] = useState<'create' | 'join'>(params.has('room') ? 'join' : 'create');
+  const [open, setOpen] = useState(params.has('room'));
+  const [typedName, setName] = useState(() => { try { return params.get('name') ?? localStorage.getItem('studio.name') ?? ''; } catch { return ''; } });
+  const name = account?.displayName ?? typedName;
+  const [role, setRole] = useState<Role>(params.get('role') === 'mentor' ? 'mentor' : params.get('role') === 'viewer' ? 'viewer' : 'student');
   const [code, setCode] = useState(params.get('room') ?? '');
   const [generated, setGenerated] = useState(makeCode);
-  const [error, setError] = useState<string | null>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
-
+  const [error, setError] = useState('');
+  const [rooms, setRooms] = useState<RoomSummary[]>(readRecent);
+  useEffect(() => { if (params.get('name') && params.get('room')) join({ name, role, roomCode: slug(params.get('room')!) }); }, []);
   useEffect(() => {
-    if (params.get('name') && params.get('room')) join({ name, role, roomCode: slug(params.get('room')!) || 'demo' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Signing in: start from your usual role, and list the rooms you belong to (guests see the ones this browser opened last).
-  useEffect(() => {
-    if (!account) {
-      setRooms(readRecent().map((r) => ({ code: r.code, name: r.code, role: r.role, owner: false, lastActiveAt: r.at, memberCount: 0 })));
-      return;
-    }
-    if (!askedRole) setRole(account.defaultRole);
-    let alive = true;
-    api
-      .get<{ rooms: RoomSummary[] }>('/api/rooms')
-      .then((r) => alive && setRooms(r.rooms.slice(0, 6)))
-      .catch(() => alive && setRooms([]));
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!account) { setRooms(readRecent()); return; }
+    if (!params.has('role')) setRole(account.defaultRole);
+    let active = true;
+    api.get<{ rooms: RoomSummary[] }>('/api/rooms').then(r => { if (active) setRooms(r.rooms.slice(0, 5)); }).catch(() => {});
+    return () => { active = false; };
   }, [account?.id]);
-
-  function choose(m: Mode) {
-    setMode(m);
-    setError(null);
-    nameRef.current?.focus();
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('revealed'); observer.unobserve(entry.target); } }), { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+  function choose(next: 'create' | 'join') { setMode(next); setError(''); setOpen(true); }
+  function enter(roomCode: string, selectedRole = role) {
+    if (!name.trim()) { setError('Add your name so your classmates know it’s you.'); return; }
+    try {
+      localStorage.setItem('studio.name', name.trim());
+      localStorage.setItem('studio.recent', JSON.stringify([{ code: roomCode, name: roomCode, role: selectedRole, lastActiveAt: Date.now(), owner: false, memberCount: 0 }, ...readRecent().filter(r => r.code !== roomCode)].slice(0, 5)));
+    } catch { /* Storage is optional. */ }
+    join({ name, role: selectedRole, roomCode });
   }
-
   function submit(e: FormEvent) {
     e.preventDefault();
     const roomCode = mode === 'create' ? generated : slug(code);
-    if (!roomCode) {
-      setError('Enter the room code your mentor or classmate shared.');
-      return;
-    }
-    try {
-      localStorage.setItem('syncverse.name', name.trim());
-    } catch {
-      /* private mode: fine */
-    }
-    rememberRoom(roomCode, role);
-    join({ name, role, roomCode });
+    if (!roomCode) { setError('Enter the room code shared with you.'); return; }
+    enter(roomCode);
   }
-
-  function reopen(r: RoomSummary) {
-    rememberRoom(r.code, r.role);
-    join({ name, role: r.role, roomCode: r.code });
-  }
-
-  return (
-    <div className="page-frame">
-      {/* nav */}
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58, padding: '0 22px' }}>
-        <Logo />
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 22, fontSize: 13.5 }} className="hide-md">
-          <a href="#features" style={{ color: 'var(--ink-2)', textDecoration: 'none' }}>Features</a>
-          <span className="eyebrow">PS 02 · remote STEM education</span>
-        </nav>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="btn btn-outline btn-sm"
-            style={{ width: 32, padding: 0 }}
-            aria-pressed={lowBw}
-            aria-label="Low-bandwidth mode"
-            title={lowBw ? 'Low-bandwidth mode is on (click to turn off)' : 'Low-bandwidth mode: audio-only calls, fewer updates, no animation'}
-            data-testid="lowbw-toggle-entry"
-            onClick={() => setLowBandwidth(!lowBw)}
-          >
-            <Icon name="signal" size={15} />
-          </button>
-          <ThemeToggle />
-          <AccountButton />
-          <button className="btn btn-outline btn-sm hide-sm" onClick={() => choose('join')}>Join a room</button>
-          <button className="btn btn-sm" onClick={() => choose('create')}>Create a room</button>
+  return <div className="studio-landing">
+    <a href="#main" className="skip-link">Skip to content</a>
+    <header className="landing-nav"><a href="#" className="brand-link" aria-label="SyncVerse home"><Brand/></a><nav aria-label="Main navigation"><a href="#workspace-preview">Workspace</a><a href="#made-for-learning">The experience</a><a href="#how-it-works">How it works <span>↗</span></a></nav><div className="nav-actions"><AccountButton/></div></header>
+    <main id="main">
+      <section className="landing-hero">
+        <div className="hero-copy">
+          <div className="hero-eyebrow"><span className="live-dot"/> LESS FRICTION. MORE FIGURING IT OUT.</div>
+          <h1>A little curiosity.<br/>A lot of <em>possibility.</em></h1>
+          <p>A shared space to code, get unstuck, and learn from each other.<br className="desktop-break"/> Bring an idea. Bring your people. See where it goes.</p>
         </div>
-      </header>
-      <div className="hatch" />
-
-      {/* hero */}
-      <section className="plusgrid" style={{ flex: 1 }}>
-        <div className="hero-pad">
-          <div style={{ textAlign: 'center', margin: '0 auto', maxWidth: 820 }}>
-            <h1 className="headline">
-              Learn to code together.
-              <br />
-              <span className="dim">Understand it on your own.</span>
-            </h1>
-            <p style={{ margin: '20px auto 0', maxWidth: 520, fontSize: 15.5, lineHeight: 1.55, color: 'var(--ink-2)' }}>
-              Edit one program live with classmates and mentors, run it on your own, and get plain-English help the moment it breaks.
-            </p>
+        <div className="hero-art" aria-hidden="true">
+          <div className="art-grid"/><div className="orbit orbit-one"/><div className="orbit orbit-two"/>
+          <div className="art-center"><span className="art-bracket">[</span><span className="art-asterisk">&#10035;</span><span className="art-bracket">]</span></div>
+          <span className="art-label label-one"><span className="live-dot"/> your idea</span>
+          <span className="art-label label-two">our next breakthrough <span>&#8599;</span></span>
+          <span className="art-coordinate">01 / IN GOOD COMPANY</span>
+          <div className="art-cursor"><svg width="19" height="23" viewBox="0 0 19 23"><path d="M2 2v17l5-5 5 7 3-2-5-7h7z" fill="currentColor"/></svg><span>you, together</span></div>
+        </div>
+        <div className="hero-entry">
+          <div className="hero-actions" role="group" aria-label="Start coding together">
+            <button className="btn studio-primary" data-testid="hero-create" onClick={() => choose('create')}><Icon name="plus" size={18}/> Create room <Icon name="arrow" size={17}/></button>
+            <button className="btn btn-outline hero-join" data-testid="hero-join" onClick={() => choose('join')}><Icon name="users" size={18}/> Join room <Icon name="arrow" size={17}/></button>
           </div>
-
-          <div style={{ display: 'grid', gap: 44, alignItems: 'center', marginTop: 46 }} className="grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-            <form className="entry-card" onSubmit={submit} style={{ maxWidth: 470, width: '100%', padding: 18, justifySelf: 'center' }} data-testid="entry-card">
-              <div className="seg" role="group" aria-label="Create or join">
-                <button type="button" aria-pressed={mode === 'create'} onClick={() => choose('create')}>Create a room</button>
-                <button type="button" aria-pressed={mode === 'join'} onClick={() => choose('join')}>Join a room</button>
-              </div>
-
-              <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
-                <label className="field">
-                  <span>Your name</span>
-                  <input ref={nameRef} className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Asha" maxLength={40} required autoFocus readOnly={Boolean(account)} title={account ? 'Change your name in your profile' : undefined} data-testid="entry-name" />
-                </label>
-
-                <div className="field">
-                  <span>I am a</span>
-                  <div className="seg" role="group" aria-label="Role">
-                    <button type="button" aria-pressed={role === 'student'} onClick={() => setRole('student')}>Student</button>
-                    <button type="button" aria-pressed={role === 'mentor'} onClick={() => setRole('mentor')}>Mentor</button>
-                    <button type="button" aria-pressed={role === 'viewer'} onClick={() => setRole('viewer')} data-testid="role-viewer">Viewer</button>
-                  </div>
-                  {role === 'viewer' && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--muted)' }}>Viewers watch and listen but cannot edit.</div>}
-                </div>
-
-                {mode === 'create' ? (
-                  <div className="field">
-                    <span>Your room code</span>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <div className="input code" style={{ display: 'flex', alignItems: 'center', background: 'var(--paper-2)' }} data-testid="entry-generated">{generated}</div>
-                      <button type="button" className="btn btn-outline" style={{ height: 40 }} onClick={() => setGenerated(makeCode())} aria-label="Generate a different code" title="Different code">
-                        <Icon name="dice" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <label className="field">
-                    <span>Room code</span>
-                    <input
-                      className="input code"
-                      value={code}
-                      onChange={(e) => {
-                        setCode(e.target.value);
-                        setError(null);
-                      }}
-                      placeholder="e.g. swift-loop-42"
-                      data-testid="entry-code"
-                    />
-                  </label>
-                )}
-
-                {error && (
-                  <div role="alert" style={{ fontSize: 12.5, color: 'var(--danger)' }}>
-                    {error}
-                  </div>
-                )}
-
-                <button type="submit" className="btn btn-block" data-testid="entry-submit">
-                  {mode === 'create' ? 'Create room' : 'Join room'}
-                  <Icon name="arrow" />
-                </button>
-                <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.45 }}>
-                  {account ? `Signed in as ${account.username}.` : 'No account needed.'} {mode === 'create' ? 'Share the code, or the invite link inside the room.' : 'Your camera and mic start only when you join the call.'}
-                </div>
-              </div>
-              {rooms.length > 0 && (
-                <section aria-label={account ? 'Your rooms' : 'Recent rooms'} style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--rule-soft)' }} data-testid="room-list">
-                  <div className="eyebrow" style={{ marginBottom: 6 }}>{account ? 'Your rooms' : 'Recent rooms on this device'}</div>
-                  <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                    {rooms.map((r) => (
-                      <li key={r.code} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 550, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</div>
-                          <div className="mono" style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-                            {r.code} · {r.owner ? 'owner' : r.role} · {ago(r.lastActiveAt)}
-                          </div>
-                        </div>
-                        <button type="button" className="btn btn-outline btn-sm" onClick={() => reopen(r)} aria-label={`Open ${r.name}`} data-testid="room-open-row">
-                          Open
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-            </form>
-
-            {lowBw ? (
-              <div style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }} data-testid="lowbw-note">
-                <div className="eyebrow" style={{ marginBottom: 6 }}>Low-bandwidth mode is on</div>
-                The live demo is hidden to save data. In a room, calls join with audio only and animations are off.
-              </div>
-            ) : (
-              <HeroMock />
-            )}
-          </div>
+          <div className="hero-footnote"><Icon name="check" size={13}/> Start as a guest <span>&middot;</span> No setup. Just a shared link.</div>
         </div>
       </section>
-
-      <div className="hatch" />
-      <Features />
-      <div className="hatch thin" />
-      <footer style={{ padding: '12px 22px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }} className="eyebrow">
-        <span>SyncVerse · collaborative real-time code editor for remote STEM education</span>
-        <span>Shared code, private execution</span>
-      </footer>
-    </div>
-  );
+      <StudioPreview onStart={() => choose('create')}/>
+      <div className="language-strip"><span>A familiar language. A fresh perspective.</span><div><span>Python</span><i/><span>JavaScript</span><i/><span>Java</span><i/><span>C / C++</span><i/><span className="language-last">Your next idea ↗</span></div></div>
+      <section className="experience-section reveal" id="made-for-learning"><div className="section-heading"><span className="section-kicker">01 — THE EXPERIENCE</span><h2>Space for the code.<br/><span>And the people behind it.</span></h2><p>Everything you need to find your flow,<br/>with a little help along the way.</p></div><div className="experience-grid"><article className="experience-card"><div className="feature-visual together-visual"><div className="mini-code">ideas <span>=</span> better_together<span>()</span></div><span className="visual-cursor cursor-one">↖ <b>You</b></span><span className="visual-cursor cursor-two">↖ <b>Your teammate</b></span></div><span className="feature-number">01 / CONNECT</span><h3>Same page. Same moment.</h3><p>Edit together in real time. See every cursor, talk it through, and turn “I’m stuck” into “I get it.”</p><div className="feature-tags"><span>Live editing</span><span>Voice & video</span></div></article><article className="experience-card"><div className="feature-visual understand-visual"><div className="error-line"><span>08</span> numbers[len(numbers)] <span className="small-error">!</span></div><div className="understand-hint"><Icon name="arrow" size={15}/><span>Try starting at zero.<br/><small>Lists count a little differently.</small></span></div></div><span className="feature-number">02 / UNDERSTAND</span><h3>The why behind the fix.</h3><p>Run privately, explore an error, and review a suggested patch. Build understanding with every attempt.</p><div className="feature-tags"><span>Private runs</span><span>Guided debugging</span></div></article><article className="experience-card"><div className="feature-visual growth-visual"><div className="growth-bars">{[24, 39, 32, 51, 47, 65, 57, 76, 88, 82, 100, 112].map((h, i) => <i key={i} style={{ height: h, animationDelay: `${i * 60}ms` }}/>)}</div><span className="growth-caption">A little further than yesterday <span>↗</span></span></div><span className="feature-number">03 / GROW</span><h3>Small steps. Real progress.</h3><p>See the concepts you’re practicing and invite a mentor in when you need another pair of eyes.</p><div className="feature-tags"><span>Learning progress</span><span>Mentor support</span></div></article></div></section>
+      <section className="how-section reveal" id="how-it-works"><div><span className="section-kicker">02 — FIND YOUR FLOW</span><h2>From “what if”<br/>to <em>“it works.”</em></h2></div><div className="how-steps">{[['01', 'Make a little room.', 'Create a workspace and share the link with your people.'], ['02', 'Work it out together.', 'Write, run, talk, and follow each other’s thinking in real time.'], ['03', 'Leave knowing a little more.', 'Understand the errors. Keep the lessons. Come back curious.']].map(([n, title, body]) => <div key={n}><span>{n}</span><article><h3>{title}</h3><p>{body}</p></article><Icon name="arrow" size={17}/></div>)}</div></section>
+      <section className="closing-section reveal"><div><span className="live-dot"/><span>YOUR NEXT “AHA” IS WAITING.</span></div><h2>Good things happen<br/>when we <em>figure it out together.</em></h2><button className="btn studio-primary" onClick={() => choose('create')}>Let’s build something <Icon name="arrow" size={17}/></button></section>
+    </main><footer className="landing-footer"><Brand/><span>For curious minds. And the people who help them grow.</span><a href="#main">Back to top ↑</a></footer>
+    {open && <Dialog title={mode === 'create' ? 'A fresh space for your next idea.' : 'Your people are waiting.'} onClose={() => { setOpen(false); if (params.has('room')) history.replaceState(null, '', location.pathname); }} width={460} testId="entry-dialog"><form className="studio-entry" onSubmit={submit} data-testid="entry-card"><p className="entry-description">{mode === 'create' ? 'Bring a little curiosity. We’ll take care of the workspace.' : 'Pick up the conversation with a shared room code.'}</p><div className="seg" role="group" aria-label="Create or join"><button type="button" aria-pressed={mode === 'create'} onClick={() => setMode('create')}>Create a room</button><button type="button" aria-pressed={mode === 'join'} onClick={() => setMode('join')}>Join a room</button></div><label className="field"><span>Your name</span><input className="input" data-testid="entry-name" value={name} onChange={e => setName(e.target.value)} placeholder="What should we call you?" maxLength={40} required readOnly={Boolean(account)}/></label><div className="field"><span>I’m here as a</span><div className="seg" role="group" aria-label="Your role">{(['student', 'mentor', 'viewer'] as const).map(r => <button type="button" key={r} aria-pressed={role === r} onClick={() => setRole(r)}>{r === 'student' ? 'Learner' : r === 'mentor' ? 'Mentor' : 'Viewer'}</button>)}</div></div>{mode === 'create' ? <div className="field"><span>Your room code</span><div className="generated-code"><span className="mono" data-testid="entry-generated">{generated}</span><button type="button" className="btn btn-outline btn-sm" aria-label="Generate a different code" onClick={() => setGenerated(makeCode())}><Icon name="dice"/></button></div></div> : <label className="field"><span>Room code</span><input className="input mono" data-testid="entry-code" value={code} onChange={e => setCode(e.target.value)} placeholder="e.g. studio-loop-ab123" required maxLength={40}/></label>}{role === 'viewer' && <p className="entry-description">Watch, listen, and learn. Viewers don’t edit or run code.</p>}{error && <p role="alert" className="entry-error">{error}</p>}<button className="btn studio-primary btn-block" type="submit" data-testid="entry-submit">{mode === 'create' ? 'Create workspace' : 'Join workspace'}<Icon name="arrow"/></button><div className="entry-privacy"><Icon name="lock" size={12}/> Code together. Your runs stay private.</div>{rooms.length > 0 && <div className="recent-rooms"><span className="section-kicker">PICK UP WHERE YOU LEFT OFF</span>{rooms.slice(0, 3).map(r => <button type="button" key={r.code} onClick={() => enter(r.code, r.role)}><Icon name="history" size={14}/><span>{r.name}</span><Icon name="arrow" size={14}/></button>)}</div>}</form></Dialog>}
+  </div>;
 }
