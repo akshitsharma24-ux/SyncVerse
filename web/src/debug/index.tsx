@@ -11,11 +11,17 @@ import { useSessionUser, usePresence, useEditor } from '../session';
 import { Icon } from '../shell/icons';
 import { Overview } from './Overview';
 import { Nudge } from './Nudge';
+import { AssistTools, ProposalDialog, type Proposal, type ProposalResult } from './Assist';
 
 type Grant = DebugGrant & { scope?: 'view' | 'assist' };
 const LIVE = (g: DebugGrant) => g.status === 'requested' || g.status === 'active';
 
-function useGrants(roomCode: string, onHighlight: (by: string, line: number) => void, onBroadcast: (from: string, message: string) => void) {
+function useGrants(
+  roomCode: string,
+  onHighlight: (by: string, line: number) => void,
+  onBroadcast: (from: string, message: string) => void,
+  onSuggestion: (event: 'proposal' | 'proposal-withdrawn' | 'proposal-result', data: unknown) => void,
+) {
   const [grants, setGrants] = useState<Record<string, Grant>>({});
   const merge = useCallback((g: Grant) => setGrants((prev) => ({ ...prev, [g.id]: g })), []);
 
@@ -34,6 +40,9 @@ function useGrants(roomCode: string, onHighlight: (by: string, line: number) => 
       const d = JSON.parse((m as MessageEvent).data) as { by: string; line: number };
       onHighlight(d.by, d.line);
     });
+    for (const name of ['proposal', 'proposal-withdrawn', 'proposal-result'] as const) {
+      es.addEventListener(name, (m) => onSuggestion(name, JSON.parse((m as MessageEvent).data)));
+    }
     return () => {
       closed = true;
       es.close();
@@ -57,7 +66,7 @@ function useGrants(roomCode: string, onHighlight: (by: string, line: number) => 
   );
 }
 
-function Mirror({ ownerName, ownerId }: { ownerName: string; ownerId: string }) {
+function Mirror({ ownerName, ownerId, assistGrantId, result }: { ownerName: string; ownerId: string; assistGrantId?: string; result?: ProposalResult | null }) {
   const [run, setRun] = useState<RunResult | null | 'none'>('none');
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
@@ -103,6 +112,7 @@ function Mirror({ ownerName, ownerId }: { ownerName: string; ownerId: string }) 
           )}
         </>
       )}
+      {assistGrantId && <AssistTools grantId={assistGrantId} run={run && run !== 'none' ? run : null} result={result ?? null} />}
     </div>
   );
 }
@@ -117,6 +127,8 @@ export function DebugPanel() {
   const editor = useEditor();
   const [pointed, setPointed] = useState<string | null>(null);
   const [announce, setAnnounce] = useState<{ from: string; message: string } | null>(null);
+  const [proposals, setProposals] = useState<Proposal[]>([]); // suggested edits waiting for MY answer
+  const [suggestResult, setSuggestResult] = useState<ProposalResult | null>(null); // the answer to a suggestion I sent
   const grants = useGrants(me.roomCode, (by, line) => {
     editor.highlightLine(line);
     setPointed(`${by} pointed at line ${line}`);
@@ -127,7 +139,15 @@ export function DebugPanel() {
   }, (from, message) => {
     setAnnounce({ from, message });
     setTimeout(() => setAnnounce(null), 20000);
+  }, (event, data) => {
+    if (event === 'proposal') setProposals((prev) => [...prev.filter((p) => p.id !== (data as Proposal).id), data as Proposal]);
+    else if (event === 'proposal-withdrawn') setProposals((prev) => prev.filter((p) => p.id !== (data as { id: string }).id));
+    else setSuggestResult(data as ProposalResult);
   });
+  useEffect(() => {
+    // After a page refresh: suggestions that are still waiting for an answer.
+    api.get<Proposal[]>('/api/debug/proposals').then((list) => setProposals(list)).catch(() => {});
+  }, []);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -200,7 +220,7 @@ export function DebugPanel() {
 
       {active.map((g) => (
         <div key={g.id} data-testid="mirror">
-          <Mirror ownerId={g.ownerId} ownerName={nameOf(g.ownerId)} />
+          <Mirror ownerId={g.ownerId} ownerName={nameOf(g.ownerId)} assistGrantId={g.scope === 'assist' ? g.id : undefined} result={suggestResult} />
           {g.scope === 'assist' && (
             <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
               <input className="input code" style={{ width: 80 }} inputMode="numeric" placeholder="line" aria-label="Line to point at" value={line} onChange={(e) => setLine(e.target.value.replace(/\D/g, ''))} data-testid="hl-line" />
@@ -222,6 +242,8 @@ export function DebugPanel() {
         </Overlay>
       )}
 
+      {proposals.length > 0 && <ProposalDialog key={proposals[0].id} proposal={proposals[0]} onDecided={(id) => setProposals((prev) => prev.filter((p) => p.id !== id))} />}
+
       {incoming.length > 0 && (
         <Overlay>
           <div role="dialog" aria-modal="true" aria-label="Debug access request" data-testid="access-modal"
@@ -233,7 +255,7 @@ export function DebugPanel() {
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn" autoFocus onClick={() => decide(incoming[0].id, true)} data-testid="allow" title="They can see your latest run, nothing else">Allow view only</button>
-                <button className="btn btn-outline" onClick={() => decide(incoming[0].id, true, 'assist')} data-testid="allow-assist" title="They can also point at a line in your editor">Allow + point at lines</button>
+                <button className="btn btn-outline" onClick={() => decide(incoming[0].id, true, 'assist')} data-testid="allow-assist" title="They can also point at a line, re-run your program in their own console, and suggest edits that you accept or reject">Allow + assist</button>
                 <button className="btn btn-outline" onClick={() => decide(incoming[0].id, false)} data-testid="deny">Deny</button>
                 <button className="btn btn-outline" onClick={() => block(incoming[0].id)} data-testid="block" title="Deny and stop further requests from this person">Block</button>
               </div>
