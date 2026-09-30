@@ -24,7 +24,9 @@
     "test:rooms": "node scripts/test-accounts-rooms.mjs",
     "e2e:rooms": "node scripts/e2e-rooms.mjs",
     "check:livekit": "node scripts/check-livekit.mjs",
-    "e2e:reconnect": "node scripts/e2e-reconnect.mjs"
+    "e2e:reconnect": "node scripts/e2e-reconnect.mjs",
+    "e2e:whiteboard": "node scripts/e2e-whiteboard.mjs",
+    "e2e:snippets": "node scripts/e2e-snippets.mjs"
   },
   "devDependencies": {
     "axe-core": "^4.13.0",

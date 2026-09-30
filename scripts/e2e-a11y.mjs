@@ -60,10 +60,13 @@ async function suite(theme) {
   await page.goto(`${BASE}/?name=Axe&role=student&room=a11y-${theme}-${Math.random().toString(36).slice(2, 6)}`);
   await page.waitForSelector('.monaco-editor');
   await page.waitForFunction(() => document.body.innerText.includes('live'));
-  for (const tab of ['Video', 'AI', 'Quality', 'Debug', 'Progress']) {
+  for (const tab of ['Video', 'AI', 'Quality', 'Debug', 'Progress', 'Board']) {
     await page.getByRole('tab', { name: tab, exact: true }).click();
     await audit(`workspace, ${tab} tab`);
   }
+  await page.click('[data-testid="board-expand"]'); // the Board tab is open now
+  await audit('whiteboard, large view');
+  await page.keyboard.press('Escape');
   await page.click('[data-testid="status-chip"]');
   await audit('workspace, status popover open');
   await page.keyboard.press('Escape');

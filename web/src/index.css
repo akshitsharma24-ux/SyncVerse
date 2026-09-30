@@ -919,3 +919,109 @@ input {
   transition: none !important;
   scroll-behavior: auto !important;
 }
+
+/* ---------- whiteboard (Lane A): the Board tab ---------- */
+.bd-root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+.bd-root.expanded {
+  position: fixed;
+  inset: 14px;
+  z-index: 70;
+  height: auto;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 0 0 0 100vmax var(--overlay);
+}
+.bd-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.bd-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 10px;
+  border-right: 1px solid var(--rule-soft);
+}
+.bd-group:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+.bd-btn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+}
+.bd-btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+.bd-btn[aria-pressed='true'] {
+  background: var(--tile);
+  border-color: var(--ink);
+}
+.bd-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.bd-swatch {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--rule-soft);
+}
+.bd-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  outline: none;
+}
+.bd-root.expanded .bd-stage {
+  align-items: center;
+}
+.bd-canvas-wrap {
+  position: relative;
+  border: 1px solid var(--ink);
+  background: #fbfaf7; /* the board is always a light page, in both themes */
+  box-sizing: content-box;
+  line-height: 0;
+}
+.bd-canvas {
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+.bd-text {
+  position: absolute;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px dashed currentColor;
+  background: transparent;
+  outline: none;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.bd-foot {
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+  min-height: 18px;
+}

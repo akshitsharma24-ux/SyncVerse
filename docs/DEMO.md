@@ -34,6 +34,7 @@ Do this in order. Stop and fix anything red.
 |---|---|---|---|---|
 | 1 | 0:00 | Presenter | "Learn to code together, understand it on your own." Mentor creates a room; two students join with the code or the invite link | entry page |
 | 2 | 0:30 | All | Everyone edits one file; point at the labelled cursors and the presence avatars | editor, presence |
+| 2b | 0:45 | Asha, Ravi | Optional, 20 s: Asha opens the **Board** tab and sketches a linked list (rectangles and arrows); Ravi sees it appear live and adds a label. In a Java file, Ravi types `sout`, presses **Tab**, and gets `System.out.println();` like in VS Code | whiteboard, editor completion |
 | 3 | 1:00 | Video | Join call in the Video tab; wave, share the screen for two seconds | video dock (needs keys + two devices) |
 | 4 | 1:30 | Ravi, Mei | Samples menu, **"Stdin Average"**. Ravi runs with `3 4 5`, Mei runs with `10 20`. Different output, each only sees their own | run pipeline, private consoles |
 | 5 | 2:15 | Ravi | Samples menu, **"Index Error"**. Run. The line is marked. **Explain with AI**. Show patch: Reject (nothing changes), show again, Accept (both editors update) | error line, AI explain, patch |

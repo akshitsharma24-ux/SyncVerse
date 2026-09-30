@@ -17,6 +17,7 @@ import { QualityPanel } from './quality';
 import { AIPanel } from './ai';
 import { DebugPanel } from './debug';
 import { ProgressPanel } from './progress';
+import { WhiteboardPanel } from './whiteboard';
 import { TopBar } from './shell/TopBar';
 import { Icon } from './shell/icons';
 import { PanelBoundary } from './shell/PanelBoundary';
@@ -28,6 +29,7 @@ const TABS = [
   { id: 'quality', label: 'Quality', icon: 'checklist', el: <QualityPanel /> },
   { id: 'debug', label: 'Debug', icon: 'bug', el: <DebugPanel /> },
   { id: 'progress', label: 'Progress', icon: 'chart', el: <ProgressPanel /> },
+  { id: 'board', label: 'Board', icon: 'board', el: <WhiteboardPanel /> },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 

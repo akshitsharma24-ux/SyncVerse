@@ -16,7 +16,7 @@ flowchart LR
   subgraph Browser["Browser (one per person)"]
     Editor["Monaco editor + Yjs"]
     Video["Video dock (LiveKit UI)"]
-    Panels["Console, AI, Quality, Debug, Progress"]
+    Panels["Console, AI, Quality, Debug, Progress, Board"]
   end
   subgraph Server["Node server (one laptop)"]
     Collab["collab.ts: live editing and presence"]
@@ -113,6 +113,8 @@ Useful commands (run the checks while `npm run dev` is running, after every merg
 | `npm run preflight` | demo warm-up: env, ports, live sync, Judge0, LiveKit, LLM (`-- --strict` on demo morning) |
 | `npm run test:persist` | code survives a hard server restart (starts its own server on :4101) |
 | `npm run e2e:reconnect` | server dies mid-session: offline edits merge after reconnect (starts its own servers on :4300/:5300) |
+| `npm run e2e:whiteboard` | the shared whiteboard (Board tab): live drawing, tools, undo, eraser, clear, viewer and paused rules, junk data, large view, PNG, reload (17 checks) |
+| `npm run e2e:snippets` | VS Code-style completion: Java `sout` + Tab, `fori`, members after a dot, java.util imports, Python / JS / C / C++ snippets, Enter never accepts (17 checks) |
 
 If an e2e run stalls while launching the browser, just run it again.
 

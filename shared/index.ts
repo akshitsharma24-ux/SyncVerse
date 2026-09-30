@@ -4,3 +4,4 @@ export * from './concepts';
 export * from './samples';
 export * from './fixtures';
 export * from './files';
+export * from './whiteboard';

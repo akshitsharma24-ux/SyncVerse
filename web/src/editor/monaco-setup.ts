@@ -19,11 +19,17 @@ import 'monaco-editor/esm/vs/basic-languages/css/css.contribution';
 import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution';
 import 'monaco-editor/esm/vs/basic-languages/xml/xml.contribution';
+// The lean core has no completion list and no snippet support of its own: pull in just those two contributions.
+import 'monaco-editor/esm/vs/editor/contrib/snippet/browser/snippetController2';
+import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import { registerSnippets } from './snippets';
 
 self.MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
 };
+
+registerSnippets(); // Tab-completable snippets (Java sout, fori, ...) and completions; see snippets.ts
 
 monaco.editor.defineTheme('syncverse', {
   base: 'vs',
