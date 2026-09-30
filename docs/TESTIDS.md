@@ -29,9 +29,9 @@ Miti's debug mirror reads `GET /api/runs/latest?ownerId=` from you, so that rout
 | data-testid | What it is | Required attributes / content |
 |---|---|---|
 | `ai-panel` | root of the AI panel | |
-| `explain-button` | "Explain with AI" for the latest run | |
-| `explain-card` | the finished explanation | visible, with readable text (what / where / why / fix) |
-| `patch-show` | "Show patch" | opens the diff preview |
+| `ai-explain-button` | "Explain with AI" for the latest run (Lane C's real name) | |
+| `ai-explanation` | the finished explanation | visible, with readable text (what / where / why / fix) |
+| `ai-suggest-patch-button` | "Suggest patch" | opens the diff preview |
 | `patch-diff` | the diff preview | visible while open |
 | `patch-accept` | Accept | applies via `useEditor().replaceAll(...)`; everyone's editor updates |
 | `patch-reject` | Reject | closes the preview; the editor text must be exactly unchanged |

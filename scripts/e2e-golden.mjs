@@ -125,22 +125,22 @@ await step('G4', 'A failing run shows its status and marks the error in the edit
 await step('G5', 'Explain with AI gives a readable explanation card', async () => {
   await needPanel(ravi, 'ai-panel', 'Lane C AI panel');
   await tab(ravi, 'AI');
-  await ravi.click(tid('explain-button'));
-  await ravi.waitForSelector(tid('explain-card'), { state: 'visible', timeout: 30000 });
-  const t = (await ravi.textContent(tid('explain-card'))).trim();
+  await ravi.click(tid('ai-explain-button'));
+  await ravi.waitForSelector(tid('ai-explanation'), { state: 'visible', timeout: 30000 });
+  const t = (await ravi.textContent(tid('ai-explanation'))).trim();
   if (t.length < 30) throw new Error('explanation is too short: ' + JSON.stringify(t));
 }, { after: ['G4'] });
 
 await step('G6', 'Patch preview: Reject changes nothing, Accept updates everyone', async () => {
   await tab(ravi, 'AI');
   const before = await value(ravi);
-  await ravi.click(tid('patch-show'));
+  await ravi.click(tid('ai-suggest-patch-button'));
   await ravi.waitForSelector(tid('patch-diff'), { state: 'visible', timeout: 30000 });
   await ravi.click(tid('patch-reject'));
   await sleep(600);
   if ((await value(ravi)) !== before) throw new Error('Reject changed the document');
   if ((await value(mei)) !== before) throw new Error("Reject changed Mei's document");
-  await ravi.click(tid('patch-show'));
+  await ravi.click(tid('ai-suggest-patch-button'));
   await ravi.waitForSelector(tid('patch-diff'), { state: 'visible', timeout: 30000 });
   await ravi.click(tid('patch-accept'));
   await mei.waitForFunction((b) => window.__sv.editor.getValue() !== b, before, { timeout: 8000 });

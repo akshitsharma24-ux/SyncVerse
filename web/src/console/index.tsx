@@ -258,6 +258,9 @@ export function RunPanel() {
             data-stale={busy && !!viewed}
             data-testid={tab === 'err' ? 'run-stderr' : 'run-stdout'}
             aria-live="polite"
+            role="region"
+            aria-label={tab === 'err' ? 'Error output' : 'Program output'}
+            tabIndex={0}
           >
             {busy && !viewed ? (
               <span className="rc-empty">Running…</span>
