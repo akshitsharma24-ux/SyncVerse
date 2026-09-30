@@ -1,4 +1,4 @@
-/** The bordered grid of six feature cells under the entry page hero. Each has a small drawn example, not an icon. */
+﻿/** The bordered grid of six feature cells under the entry page hero. Each has a small drawn example, not an icon. */
 import type { ReactNode } from 'react';
 import { Icon } from '../shell/icons';
 
@@ -19,7 +19,7 @@ const CELLS: Array<{ title: string; body: string; visual: ReactNode }> = [
     visual: (
       <div style={{ display: 'grid', gap: 9, paddingTop: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{bar('46%')}{tag('Ravi', '#1f5fbf')}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 18 }}>{bar('34%')}{bar('12%', '#eadfd6')}{tag('Mei', '#2e8b5e')}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 18 }}>{bar('34%')}{bar('12%', '#eadfd6')}{tag('Mei', '#26794f')}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{bar('58%')}</div>
       </div>
     ),
@@ -68,7 +68,7 @@ const CELLS: Array<{ title: string; body: string; visual: ReactNode }> = [
     body: 'Video, screen share and chat sit beside the editor. No second window.',
     visual: (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, height: '100%' }}>
-        {['#1f5fbf', '#2e8b5e', '#6b4fbb', '#d9692b'].map((c, i) => (
+        {['#1f5fbf', '#26794f', '#6b4fbb', '#b8531b'].map((c, i) => (
           <div key={c} style={{ background: '#e7e4dc', borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <i style={{ width: 20, height: 20, borderRadius: '50%', background: c, display: 'block', opacity: i === 3 ? 0.45 : 1 }} />
           </div>
@@ -105,3 +105,4 @@ export function Features() {
     </div>
   );
 }
+

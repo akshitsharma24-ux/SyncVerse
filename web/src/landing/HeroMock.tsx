@@ -8,8 +8,8 @@ import { useEffect, useState } from 'react';
 const STEP_MS = 1600;
 const STEPS = 6;
 const BLUE = '#1f5fbf';
-const GREEN = '#2e8b5e';
-const ORANGE = '#d9692b';
+const GREEN = '#26794f';
+const ORANGE = '#b8531b';
 
 // [line, column] of each person's caret at each step
 const RAVI: Array<[number, number]> = [[2, 13], [7, 25], [4, 24], [3, 32], [3, 28], [3, 28]];
@@ -83,7 +83,7 @@ export function HeroMock() {
             <div key={p.n} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0' }}>
               <i style={{ width: 8, height: 8, borderRadius: '50%', background: p.c, display: 'block', flex: 'none' }} />
               <span>{p.n}</span>
-              <span style={{ color: 'var(--soft)', fontSize: 10.5, whiteSpace: 'nowrap' }}>{p.s}</span>
+              <span style={{ color: 'var(--muted)', fontSize: 10.5, whiteSpace: 'nowrap' }}>{p.s}</span>
             </div>
           ))}
         </aside>
@@ -121,7 +121,7 @@ export function HeroMock() {
               {failed && (
                 <>
                   <div style={{ color: 'var(--danger)' }}>IndexError: list index out of range</div>
-                  <div style={{ color: 'var(--soft)' }}>  File "main.py", line 4</div>
+                  <div style={{ color: 'var(--muted)' }}>  File "main.py", line 4</div>
                 </>
               )}
               {fixed && <div style={{ color: 'var(--ink)' }}>4.0</div>}
@@ -136,7 +136,7 @@ export function HeroMock() {
                   <div><b>The loop ran one step too far.</b> <span className="mono" style={{ fontSize: 11 }}>range(len(nums) + 1)</span> reaches index 3, but the list only has positions 0 to 2.</div>
                 </>
               ) : (
-                <div style={{ color: 'var(--soft)', paddingTop: 22 }}>Errors get explained here, in plain English.</div>
+                <div style={{ color: 'var(--muted)', paddingTop: 22 }}>Errors get explained here, in plain English.</div>
               )}
             </div>
           </div>
@@ -145,6 +145,7 @@ export function HeroMock() {
     </div>
   );
 }
+
 
 
 

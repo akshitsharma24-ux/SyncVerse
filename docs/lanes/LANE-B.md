@@ -1,4 +1,4 @@
-# Lane B - Run pipeline, console, quality  (owner: Simrit)
+﻿# Lane B - Run pipeline, console, quality  (owner: Simrit)
 
 Read `CLAUDE.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
 
@@ -65,3 +65,14 @@ Language selector for C, C++, Java, JavaScript with the Judge0 ids from /languag
 **Needs:** P-B1
 
 **Blueprint tasks:** T-B-05
+
+## Test hooks and shared data for Lane B (added after the first push)
+
+Put these `data-testid` names on your UI (full contract: `docs/TESTIDS.md`): `panel-run` (console root, add it first), `stdin-input`, `run-button`,
+`run-status` (with `data-status` = the RunStatus and `data-run-id`), `run-stdout`, `run-stderr`, `panel-quality`, `quality-finding`
+(with `data-category` and `data-rule`). After a failed run call `useEditor().setMarkers(...)`.
+
+Shared data you can use today: `SAMPLES` (9 programs with the exact expected status, error name and line), `fixtureRuns` (one RunResult per status),
+`fixtureDiagnostics` (what your six rules should find in the `quality-smells` sample), `errorCategory(status, stderr)`. Judge0 reports a Python
+SyntaxError as a runtime error: map stderr containing SyntaxError or IndentationError to `compile_error`. Run `npm run verify:samples`.
+Check your keys with `npm run preflight`. Your steps in the demo test: G3 (private runs), G4 (error line), G7 (quality) in `npm run e2e:golden`.

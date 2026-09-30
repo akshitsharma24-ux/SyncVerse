@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Lane A (Akshit): the shared editor. Monaco bound to one Yjs document per room (Y.Text 'code') over
  * ws://<host>/collab/<roomCode>. Implements EditorHandle (other lanes only ever see that interface) and feeds
  * usePresence() from Yjs awareness, including labelled remote cursors.
@@ -182,7 +182,7 @@ export function EditorPanel() {
     };
   };
 
-  const dot = status === 'connected' ? '#2e8b5e' : status === 'connecting' ? '#b7791f' : '#c0392b';
+  const dot = status === 'connected' ? 'var(--ok)' : status === 'connecting' ? 'var(--warn)' : 'var(--danger)';
   const label = status === 'connected' ? (synced ? 'live' : 'syncing') : status === 'connecting' ? 'connecting' : 'offline - your edits are kept and will merge';
 
   return (
@@ -227,8 +227,9 @@ export function EditorPanel() {
             scrollBeyondLastLine: false,
             automaticLayout: true,
             renderLineHighlight: 'line',
-            smoothScrolling: true,
-            cursorSmoothCaretAnimation: 'on',
+            // Respect "reduce motion": no animated scrolling or caret glide.
+            smoothScrolling: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+            cursorSmoothCaretAnimation: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : 'on',
           }}
         />
       </div>
@@ -237,3 +238,4 @@ export function EditorPanel() {
 }
 
 export default EditorPanel;
+

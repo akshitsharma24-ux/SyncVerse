@@ -10,11 +10,13 @@
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { EditorHandle, PresenceUser, Role, RunResult, SessionUser } from '@syncverse/shared';
+import { ToastProvider } from './shell/toast';
 
 // ---------------------------------------------------------------------------------------- session
 const STORAGE_KEY = 'syncverse.session';
 // No red: red means error in this UI.
-const COLORS = ['#1f5fbf', '#2e8b5e', '#6b4fbb', '#d9692b', '#0f8b8d', '#a0522d', '#7a3e9d', '#3d6b99'];
+// Every colour keeps white text at >= 4.5:1 (cursor labels, avatar initials).
+const COLORS = ['#1f5fbf', '#26794f', '#6b4fbb', '#b8531b', '#0b7477', '#a0522d', '#7a3e9d', '#3d6b99'];
 
 function colorFor(userId: string): string {
   let h = 0;
@@ -180,10 +182,14 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <SessionProvider>
       <WorkspaceProvider>
         <EditorProvider>
-          <PresenceProvider>{children}</PresenceProvider>
+          <PresenceProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </PresenceProvider>
         </EditorProvider>
       </WorkspaceProvider>
     </SessionProvider>
   );
 }
+
+
 

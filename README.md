@@ -5,8 +5,43 @@ Collaborative real-time code editor for remote STEM education (PS 02). Overnight
 - Plan for tonight: `SyncVerse_Overnight_Prototype_Plan.pdf`
 - Long-term design: `SyncVerse_Master_Blueprint.pdf`
 - Live status and handoff: `docs/TRACKER.md`
+- Demo script and demo-morning checklist: `docs/DEMO.md`; UI test contract for lane panels: `docs/TESTIDS.md`
 - Conventions for people and Claude sessions: `CLAUDE.md`
 
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Browser["Browser (one per person)"]
+    Editor["Monaco editor + Yjs"]
+    Video["Video dock (LiveKit UI)"]
+    Panels["Console, AI, Quality, Debug, Progress"]
+  end
+  subgraph Server["Node server (one laptop)"]
+    Collab["collab.ts: live editing and presence"]
+    Routes["API routes: run, analyze, ai, debug, events"]
+    Token["LiveKit token route"]
+  end
+  Editor <-->|"WebSocket /collab"| Collab
+  Panels -->|"HTTP /api and SSE"| Routes
+  Video -->|"join token"| Token
+  Video <-->|"WebRTC media"| LiveKit[("LiveKit Cloud")]
+  Routes --> Judge0[("Judge0 sandbox")]
+  Routes --> LLM[("LLM API")]
+```
+
+Shared code, private execution: the editor text is shared through Yjs, while every run, explanation and debug view belongs to one person.
+
+```mermaid
+sequenceDiagram
+  participant S as Student browser
+  participant A as API server
+  participant J as Judge0
+  S->>A: POST /api/run (source, stdin)
+  A->>J: submit job with time and memory limits
+  J-->>A: stdout, stderr, status
+  A-->>S: RunResult (readable only by its owner or an allowed mentor)
+```
 ## Quick start
 
 Needs Node 20 or newer (tested on Node 24).
@@ -32,6 +67,10 @@ Useful commands (run the checks while `npm run dev` is running, after every merg
 | `npm run e2e` | two real Edge sessions: live editing, cursors, presence, markers (13 checks) |
 | `npm run e2e:entry` | entry page: create/join flow, invite link, validation, phone/tablet layout, animated editor, workspace tabs and resizing (11 checks) |
 | `npm run e2e:video` | video dock UI (real media needs LiveKit keys and two devices) |
+| `npm run e2e:golden` | the whole demo with three browsers; steps SKIP until a lane's panel exists (`-- --strict` on demo morning) |
+| `npm run e2e:a11y` | axe-core accessibility audit (WCAG A/AA) of the entry page and every workspace tab |
+| `npm run verify:samples` | runs every planted-bug program with real Python and checks the shared fixtures |
+| `npm run preflight` | demo warm-up: env, ports, live sync, Judge0, LiveKit, LLM (`-- --strict` on demo morning) |
 | `npm run test:persist` | code survives a hard server restart (starts its own server on :4101) |
 | `npm run e2e:reconnect` | server dies mid-session: offline edits merge after reconnect (starts its own servers on :4300/:5300) |
 
@@ -72,6 +111,7 @@ server/                Express; routes/*.ts one file per lane; collab.ts is the 
 docs/TRACKER.md        status + handoff;  docs/lanes/  one file per lane
 scripts/smoke.mjs      automated checks
 ```
+
 
 
 

@@ -1,4 +1,4 @@
-# Lane D - Debug access, progress, demo data  (owner: Miti)
+﻿# Lane D - Debug access, progress, demo data  (owner: Miti)
 
 Read `CLAUDE.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
 
@@ -55,3 +55,14 @@ One tile per participant: presence, last-run status, failed-run streak, stuck fl
 **Needs:** P-D1, P-D2
 
 **Blueprint tasks:** T-A-09, T-D-09
+
+## Test hooks and shared data for Lane D (added after the first push)
+
+Put these `data-testid` names on your UI (full contract: `docs/TESTIDS.md`): `panel-debug` (root, add it first), `debug-request` (one per person, with `data-user`),
+`debug-incoming`, `debug-allow`, `debug-deny`, `debug-banner`, `debug-revoke`, `debug-mirror`; `panel-progress`, `progress-observation`;
+`samples-menu` and `sample-<id>`. The golden test also checks privacy through the API: `GET /api/run/<id>` must be 403 for anyone who is not the owner or
+an active grantee, 200 for them, and 403 again after revoke.
+
+Shared data you can use today: `makeSeedEvents({ userId, roomCode })` (a believable history that triggers "Retry recommended" for loop boundaries),
+`OBSERVATION_RULE` (the exact threshold), `conceptsForCategory`, `CONCEPTS`, `fixtureGrants` (one DebugGrant per status), `fixturePresence`, `SAMPLES` (your Samples
+menu: 9 programs with titles and notes), `useToast()` for "Asha wants to view your session". Your steps in the demo test: G8 (debug access) and G9 (progress).

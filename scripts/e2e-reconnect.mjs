@@ -84,6 +84,9 @@ try {
     await A.waitForFunction(() => /offline|connecting/.test(document.body.innerText) && !/\blive\b/.test(document.querySelector('[data-testid="editor-status"]')?.innerText ?? ''), null, { timeout: 15000 });
   });
 
+  await check('status chip says "Server offline" while the API is down', async () => {
+    await A.waitForSelector('[data-testid="status-chip"][data-state="offline"]', { timeout: 15000 });
+  });
   await check('typing while offline still works locally', async () => {
     await A.keyboard.press('Control+End');
     await A.keyboard.type('\n# typed while offline', { delay: 10 });
@@ -99,6 +102,9 @@ try {
     await B.waitForFunction(() => /\blive\b/.test(document.querySelector('[data-testid="editor-status"]')?.innerText ?? ''), null, { timeout: 25000 });
   });
 
+  await check('status chip recovers after the API is back', async () => {
+    await A.waitForSelector('[data-testid="status-chip"]:not([data-state="offline"]):not([data-state="checking"])', { timeout: 15000 });
+  });
   await check('the offline edit reaches the other person after reconnect', () => has(B, '# typed while offline'));
 
   await check('both converge to identical text; starter and earlier edit appear exactly once', async () => {
@@ -118,4 +124,5 @@ try {
 }
 for (const [okk, name, d] of results) console.log(`${okk ? 'PASS' : 'FAIL'}  ${name}${d ? '  - ' + d : ''}`);
 process.exit(results.length && results.every((r) => r[0]) ? 0 : 1);
+
 

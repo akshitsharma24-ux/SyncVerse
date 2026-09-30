@@ -10,18 +10,18 @@
   --panel: #fbfaf7;
   --ink: #151515;
   --ink-2: #3b3b38;
-  --muted: #77756e;
+  --muted: #65635b;
   --soft: #a9a69d;
   --rule: #151515;
   --rule-soft: #d8d5cd;
-  --danger: #c0392b;
-  --ok: #2e7d57;
-  --warn: #b7791f;
+  --danger: #b03426;
+  --ok: #247548;
+  --warn: #946014;
 
   --lane-a: #1f5fbf;
-  --lane-b: #2e8b5e;
+  --lane-b: #26794f;
   --lane-c: #6b4fbb;
-  --lane-d: #d9692b;
+  --lane-d: #b8531b;
 
   --font-sans: 'Geist Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, 'Cascadia Code', Consolas, monospace;
@@ -151,7 +151,7 @@ input {
   margin: 0;
 }
 .headline .dim {
-  color: #a3a19a;
+  color: #85837a;
 }
 
 .seg {
@@ -550,4 +550,23 @@ input {
   .hide-sm {
     display: none !important;
   }
+}
+
+/* Skip link: invisible until it gets keyboard focus. */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -48px;
+  z-index: 100;
+  padding: 8px 14px;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 10px;
 }

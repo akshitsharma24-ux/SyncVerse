@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Lane A (Akshit): P-A4 video dock. LiveKit prebuilt conference: video, audio, screen share and in-room chat.
  * The call starts only when the user clicks "Join call" (no surprise camera prompts, no auto-connect in tests).
  * The dock stays mounted while other tabs are shown (see App.tsx) so the call survives tab switching.
@@ -73,7 +73,7 @@ export function VideoDock() {
         {busy ? 'Connecting...' : 'Join call'}
       </button>
       {error && (
-        <div className="rounded border p-2 text-xs" style={{ borderColor: '#c0392b', background: '#fbe9e7' }} data-testid="video-error">
+        <div className="rounded border p-2 text-xs" style={{ borderColor: 'var(--danger)', background: '#fbeeec' }} data-testid="video-error">
           {error}
         </div>
       )}
@@ -82,3 +82,4 @@ export function VideoDock() {
 }
 
 export default VideoDock;
+

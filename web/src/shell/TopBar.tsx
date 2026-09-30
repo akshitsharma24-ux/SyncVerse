@@ -1,9 +1,11 @@
-/** Workspace top bar: brand, room code with invite link, who is here, demo samples slot, me, leave. Owner: Lane A. */
+﻿/** Workspace top bar: brand, room code with invite link, who is here, demo samples slot, me, leave. Owner: Lane A. */
 import { useEffect, useRef, useState } from 'react';
 import { usePresence, useSession } from '../session';
 import { SamplesMenu } from '../demo';
 import { Logo } from './Logo';
 import { Icon } from './icons';
+import { PanelBoundary } from './PanelBoundary';
+import { StatusChip } from './StatusChip';
 
 const initials = (name: string) =>
   name
@@ -47,7 +49,8 @@ export function TopBar() {
       <span aria-live="polite" style={{ fontSize: 12, color: 'var(--ok)', minWidth: 90 }}>{copied ? 'Invite link copied' : ''}</span>
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
-        <SamplesMenu />
+        <StatusChip />
+        <PanelBoundary name="samples" compact><SamplesMenu /></PanelBoundary>
         <div style={{ display: 'flex', alignItems: 'center' }} aria-label={`${people.length} in this room`} data-testid="topbar-people">
           {shown.map((p) => (
             <span key={p.userId} className="avatar" data-state={p.state} data-topbar-presence={p.name} style={{ background: p.color }} title={`${p.name} (${p.role}) - ${p.state}`}>
@@ -69,3 +72,5 @@ export function TopBar() {
     </header>
   );
 }
+
+

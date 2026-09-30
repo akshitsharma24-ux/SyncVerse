@@ -57,6 +57,14 @@ Warm paper, ink-black, hairline frames, diagonal hatch bands. Tokens are CSS var
 - Gotcha: our CSS in `index.css` is unlayered and beats Tailwind utilities, so a Tailwind class like `hidden` will NOT override `.btn`'s display or an inline `style={{display}}`. Use the `hide-sm` / `hide-md` helper classes, or conditional rendering.
 - Keep `data-testid` hooks the tests rely on (see `scripts/e2e-*.mjs`). Add your own for new features.
 
+## Shared helpers and checks (use them, do not rebuild them)
+
+- **Fixtures and demo data:** `import { SAMPLES, SAMPLE_BY_ID, fixtureRuns, fixtureExplanations, fixtureDiagnostics, fixtureGrants, fixturePresence, makeSeedEvents, CONCEPTS, errorCategory, conceptsForCategory, OBSERVATION_RULE } from '@syncverse/shared'`. Build your UI against these before anyone's backend exists. The 9 planted-bug programs have verified error types and lines, and pre-baked explanations (usable as Lane C's answer cache).
+- **Toasts:** `const toast = useToast(); toast('Patch applied', 'ok')` (from `web/src/shell/toast.tsx`).
+- **Crash shield:** every panel is wrapped in `PanelBoundary`; if yours throws, only your panel shows an error card. Dev trick: open the app with `?crash=ai` to see it.
+- **Test hooks:** put the exact `data-testid` names from `docs/TESTIDS.md` on your UI. `npm run e2e:golden` finds your panel through them and reports `SKIP` until your panel root exists, then runs your demo step for real.
+- **Checks to run before you merge:** `npm run typecheck`, `npm run smoke`, `npm run e2e:golden`, `npm run e2e:a11y`. Demo morning: `npm run preflight -- --strict` and `npm run e2e:golden -- --strict`.
+- **Status chip** (top bar) shows which keys are missing on the server. **Demo script and checklist:** `docs/DEMO.md`.
 ## Conventions
 
 - TypeScript strict. `npm run typecheck` must pass before you merge.
@@ -75,6 +83,7 @@ Warm paper, ink-black, hairline frames, diagonal hatch bands. Tokens are CSS var
 ## Never cut (the demo)
 
 Editor + presence (A2, A3), run + error line (B1 to B3), AI explain (C1, C2), debug access (D1). See the cut ladder in the plan.
+
 
 
 
