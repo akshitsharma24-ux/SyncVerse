@@ -137,7 +137,7 @@ await check('a messy room code is cleaned ("My Room!" becomes my-room)', async (
 
 await check('workspace: tabs switch, every tab stays mounted, dock is resizable by keyboard', async () => {
   await P1.getByRole('tab', { name: 'Debug', exact: true }).click();
-  await P1.waitForFunction(() => document.body.textContent.includes('people in room'));
+  await P1.waitForSelector('[data-testid="debug-panel"]', { state: 'visible', timeout: 8000 });
   const before = await P1.evaluate(() => document.querySelector('aside').getBoundingClientRect().width);
   await P1.focus('[role="separator"][aria-orientation="vertical"]');
   await P1.keyboard.press('ArrowLeft');

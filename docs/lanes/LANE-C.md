@@ -68,9 +68,10 @@ Run the eight planted samples, read the answers, fix prompts, refresh the cache.
 
 ## Test hooks and shared data for Lane C (added after the first push)
 
-Put these `data-testid` names on your UI (full contract: `docs/TESTIDS.md`): `panel-ai` (root, add it first), `explain-button`, `explain-card`,
+Put these `data-testid` names on your UI (full contract: `docs/TESTIDS.md`): `ai-panel` (root, add it first), `explain-button`, `explain-card`,
 `patch-show`, `patch-diff`, `patch-accept`, `patch-reject`. Reject must leave the editor text exactly unchanged; Accept must call `useEditor().replaceAll(...)`.
 
 Shared data you can use today: `fixtureExplanations` and `SAMPLES[i].explanation` are correct, beginner-level answers for the failing planted programs
 (use them as your pre-baked cache and as your evaluation set), `fixtureRuns.runtime_error` is a realistic input, `conceptsForCategory` and `CONCEPTS`
 give you the concept slugs to tag with, `useToast()` for "Patch applied". Your steps in the demo test: G5 (explain) and G6 (patch) in `npm run e2e:golden`.
+

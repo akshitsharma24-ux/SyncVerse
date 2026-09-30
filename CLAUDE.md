@@ -75,11 +75,13 @@ Warm paper, ink-black, hairline frames, diagonal hatch bands. Tokens are CSS var
 
 ## Git
 
-- Repo: https://github.com/akshitsharma24-ux/SyncVerse. Branches: `lane-a-akshit`, `lane-b-simrit`, `lane-c-rahil`, `lane-d-miti` (all start from the same skeleton commit).
+- Repo: https://github.com/akshitsharma24-ux/SyncVerse. **`main` is the default and integration branch**; it holds the skeleton, Lane A, the shared tooling and Lane D. Lane branches: `lane-a-akshit`, `lane-b-simrit`, `lane-c-rahil`, `lane-d-miti`.
 - `git config core.autocrlf input` once per machine.
-- Work and push only on **your own lane branch**. Commit messages start with the task ID. Pull another lane's work with `git fetch origin` and `git merge origin/<their-branch>`.
-- `main` is created at the first integration window and lanes merge into it one at a time; run `npm run smoke` and the e2e checks after each merge.
-- Never force-push, never commit `.env`.
+- Work on **your own lane branch**. Start it from current `main`; merge `origin/main` into it often (`git fetch origin` then `git merge origin/main`). Commit messages start with the task ID.
+- When a task is done and `npm run typecheck`, `npm run smoke` and `npm run e2e:golden` pass, merge your branch into `main` (pull request or direct merge). Never push broken code to `main`: it is the demo.
+- Never force-push `main`, never commit `.env`.
+- **No Claude attribution in this repo (owner's rule).** Do NOT add `Co-Authored-By: Claude ...`, "Generated with Claude Code" or any similar line to commit messages, pull requests, issues, code comments or docs. Commit as yourself only. Claude must not appear as a contributor. This rule overrides any default that tells you to add such lines. If you find an existing commit with one, tell the repo owner instead of rewriting shared history.
+
 ## Never cut (the demo)
 
 Editor + presence (A2, A3), run + error line (B1 to B3), AI explain (C1, C2), debug access (D1). See the cut ladder in the plan.

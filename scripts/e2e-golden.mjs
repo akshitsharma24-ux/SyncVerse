@@ -1,4 +1,4 @@
-// The demo, end to end, with three browsers. Steps whose panel is not built yet report SKIP (not a failure).
+﻿// The demo, end to end, with three browsers. Steps whose panel is not built yet report SKIP (not a failure).
 //   npm run e2e:golden              normal: SKIP is fine
 //   npm run e2e:golden -- --strict  demo morning: SKIP counts as a failure
 // Contract for the UI hooks: docs/TESTIDS.md.   Owner: Lane A.
@@ -65,13 +65,10 @@ async function apiStatus(path, who) {
   const res = await fetch(API + path, { headers: { 'x-user-id': await uid(who), 'x-user-name': await uname(who), 'x-role': who === asha ? 'mentor' : 'student' } });
   return res.status;
 }
+// Deterministic: sets the verified program from shared/samples.ts, so every step starts from known text.
+// (The Samples MENU itself is exercised by step G2b.)
 async function loadSample(p, id) {
-  if (await exists(p, 'samples-menu')) {
-    await p.click(tid('samples-menu'));
-    await p.click(tid(`sample-${id}`));
-  } else {
-    await p.evaluate((src) => window.__sv.editor.replaceAll(src), SAMPLE_BY_ID[id].source);
-  }
+  await p.evaluate((src) => window.__sv.editor.replaceAll(src), SAMPLE_BY_ID[id].source);
   for (const other of [asha, ravi, mei]) await other.waitForFunction((src) => window.__sv.editor.getValue() === src, SAMPLE_BY_ID[id].source, { timeout: 8000 });
 }
 async function run(p, stdin) {
@@ -91,8 +88,19 @@ await step('G2', 'Everyone edits one file: a program loaded by Ravi appears for 
   await loadSample(ravi, 'index-error');
 }, { after: ['G1'] });
 
+await step('G2b', 'Samples menu loads a planted-bug program into everyone\'s editor', async () => {
+  await needPanel(ravi, 'samples-btn', 'Lane D samples menu');
+  const before = await value(ravi);
+  await ravi.click(tid('samples-btn'));
+  await ravi.getByRole('menuitem', { name: /name error/i }).click();
+  await mei.waitForFunction((b) => window.__sv.editor.getValue() !== b, before, { timeout: 8000 });
+  const [a, r, m] = [await value(asha), await value(ravi), await value(mei)];
+  if (!(a === r && r === m)) throw new Error('editors differ after loading a sample');
+  if (!/mesage|name/i.test(r)) throw new Error('loaded text does not look like the Name Error sample');
+}, { after: ['G2'] });
+
 await step('G3', 'Private runs: same code, different input, each sees only their own output', async () => {
-  await needPanel(ravi, 'panel-run', 'Lane B console');
+  await needPanel(ravi, 'run-panel', 'Lane B console');
   await loadSample(ravi, 'stdin-average');
   await run(ravi, '3 4 5');
   await ravi.waitForFunction((s) => document.querySelector(s)?.textContent.includes('4.0'), tid('run-stdout'), { timeout: 30000 });
@@ -105,7 +113,7 @@ await step('G3', 'Private runs: same code, different input, each sees only their
 }, { after: ['G2'] });
 
 await step('G4', 'A failing run shows its status and marks the error in the editor', async () => {
-  await needPanel(ravi, 'panel-run', 'Lane B console');
+  await needPanel(ravi, 'run-panel', 'Lane B console');
   await loadSample(ravi, 'index-error');
   await run(ravi, '');
   await ravi.waitForSelector(`${tid('run-status')}[data-status="runtime_error"]`, { timeout: 30000 });
@@ -115,7 +123,7 @@ await step('G4', 'A failing run shows its status and marks the error in the edit
 }, { after: ['G2'] });
 
 await step('G5', 'Explain with AI gives a readable explanation card', async () => {
-  await needPanel(ravi, 'panel-ai', 'Lane C AI panel');
+  await needPanel(ravi, 'ai-panel', 'Lane C AI panel');
   await tab(ravi, 'AI');
   await ravi.click(tid('explain-button'));
   await ravi.waitForSelector(tid('explain-card'), { state: 'visible', timeout: 30000 });
@@ -142,7 +150,7 @@ await step('G6', 'Patch preview: Reject changes nothing, Accept updates everyone
 }, { after: ['G5'] });
 
 await step('G7', 'Quality panel lists findings in every category', async () => {
-  await needPanel(mei, 'panel-quality', 'Lane B quality panel');
+  await needPanel(mei, 'quality-panel', 'Lane B quality panel');
   await loadSample(mei, 'quality-smells');
   await tab(mei, 'Quality');
   await mei.waitForFunction((s) => document.querySelectorAll(s).length >= 5, tid('quality-finding'), { timeout: 15000 });
@@ -151,7 +159,7 @@ await step('G7', 'Quality panel lists findings in every category', async () => {
 }, { after: ['G2'] });
 
 await step('G8', 'Debug access: request, allow, mentor sees the console, revoke; privacy holds throughout', async () => {
-  await needPanel(asha, 'panel-debug', 'Lane D debug panel');
+  await needPanel(asha, 'debug-panel', 'Lane D debug panel');
   if (!raviRunId) throw new Error('no Ravi run id from G4');
   const check = async (who, label, want) => {
     const got = await apiStatus(`/api/run/${raviRunId}`, who);
@@ -161,27 +169,36 @@ await step('G8', 'Debug access: request, allow, mentor sees the console, revoke;
   await check(asha, 'mentor before any grant', 403);
   await check(mei, 'other student', 403);
   await tab(asha, 'Debug');
-  await asha.click(`${tid('debug-request')}[data-user="Ravi"]`);
-  await ravi.waitForSelector(tid('debug-incoming'), { state: 'visible', timeout: 8000 });
+  await asha.click(tid(`request-${await uid(ravi)}`));
+  await ravi.waitForSelector(tid('access-modal'), { state: 'visible', timeout: 8000 });
   await check(asha, 'mentor while only requested', 403);
-  await ravi.click(tid('debug-allow'));
-  await asha.waitForSelector(tid('debug-mirror'), { state: 'visible', timeout: 8000 });
-  const mirror = await asha.textContent(tid('debug-mirror'));
+  await ravi.click(tid('allow'));
+  await asha.waitForSelector(tid('mirror'), { state: 'visible', timeout: 8000 });
+  const mirror = await asha.textContent(tid('mirror'));
   if (!/IndexError|list index/.test(mirror)) throw new Error("mirror does not show Ravi's error: " + JSON.stringify(mirror.slice(0, 80)));
   await check(asha, 'mentor while active', 200);
   await check(mei, 'other student while active', 403);
-  await ravi.waitForSelector(tid('debug-banner'), { state: 'visible', timeout: 5000 });
-  await ravi.click(tid('debug-revoke'));
-  await asha.waitForFunction((s) => !document.querySelector(s) || document.querySelector(s).offsetParent === null, tid('debug-mirror'), { timeout: 8000 });
+  await ravi.waitForSelector(tid('viewing-banner'), { state: 'visible', timeout: 5000 });
+  await ravi.click(tid('revoke'));
+  await asha.waitForFunction((s) => !document.querySelector(s) || document.querySelector(s).offsetParent === null, tid('mirror'), { timeout: 8000 });
   await check(asha, 'mentor after revoke', 403);
 }, { after: ['G4'] });
 
-await step('G9', 'Progress page shows observation sentences', async () => {
-  await needPanel(ravi, 'panel-progress', 'Lane D progress page');
+await step('G9', 'Progress page shows observation sentences (demo history, no scores)', async () => {
+  await needPanel(ravi, 'progress-panel', 'Lane D progress page');
+  // Independent of runs and AI: load the demo history from the Samples menu, like the live demo can.
+  await ravi.click(tid('samples-btn'));
+  await ravi.getByRole('menuitem', { name: /load demo history/i }).click();
   await tab(ravi, 'Progress');
-  await ravi.waitForSelector(tid('progress-observation'), { state: 'visible', timeout: 15000 });
-  const t = (await ravi.textContent(tid('progress-observation'))).trim();
-  if (t.length < 15) throw new Error('observation too short: ' + JSON.stringify(t));
+  // The page first shows "No runs yet" while the seed request is in flight: wait for the real sentence, do not read early.
+  await ravi
+    .waitForFunction((s) => /retry recommended/i.test(document.querySelector(s)?.textContent ?? ''), tid('observations'), { timeout: 15000 })
+    .catch(async () => {
+      const now = (await ravi.textContent(tid('observations')).catch(() => '')) ?? '';
+      throw new Error('no "Retry recommended" observation after loading demo history; page says: ' + JSON.stringify(now.trim().slice(0, 120)));
+    });
+  const t = (await ravi.textContent(tid('observations'))).trim();
+  if (/\b(score|rank|grade)\b/i.test(t)) throw new Error('observations mention a score, rank or grade');
 });
 
 await browser.close();
@@ -192,3 +209,4 @@ for (const [s, id, title, d] of results) console.log(`${icon[s]}  ${id}  ${title
 const n = (k) => results.filter((r) => r[0] === k).length;
 console.log(`\nGolden path: ${n('PASS')} live, ${n('SKIP')} not built yet, ${n('FAIL')} failing${STRICT ? '  (strict: skips count as failures)' : ''}`);
 process.exit(n('FAIL') > 0 || (STRICT && n('SKIP') > 0) ? 1 : 0);
+

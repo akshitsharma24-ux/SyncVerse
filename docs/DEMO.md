@@ -1,4 +1,4 @@
-# Demo script and demo-morning checklist
+﻿# Demo script and demo-morning checklist
 
 About 5 minutes. Edit the names to whoever actually does what. Every step says which tool makes it work, so you can see at a glance
 what to cut if a lane is not ready (see the cut ladder in the overnight plan PDF).
@@ -35,9 +35,9 @@ Do this in order. Stop and fix anything red.
 | 1 | 0:00 | Presenter | "Learn to code together, understand it on your own." Mentor creates a room; two students join with the code or the invite link | entry page |
 | 2 | 0:30 | All | Everyone edits one file; point at the labelled cursors and the presence avatars | editor, presence |
 | 3 | 1:00 | Video | Join call in the Video tab; wave, share the screen for two seconds | video dock (needs keys + two devices) |
-| 4 | 1:30 | Ravi, Mei | Samples menu, **"Average of numbers from input"**. Ravi runs with `3 4 5`, Mei runs with `10 20`. Different output, each only sees their own | run pipeline, private consoles |
-| 5 | 2:15 | Ravi | Samples menu, **"Loop goes one step too far"**. Run. The line is marked. **Explain with AI**. Show patch: Reject (nothing changes), show again, Accept (both editors update) | error line, AI explain, patch |
-| 6 | 3:30 | Mei | Samples menu, **"Works, but has quality problems"**. Quality tab lists findings in five categories | quality panel |
+| 4 | 1:30 | Ravi, Mei | Samples menu, **"Stdin Average"**. Ravi runs with `3 4 5`, Mei runs with `10 20`. Different output, each only sees their own | run pipeline, private consoles |
+| 5 | 2:15 | Ravi | Samples menu, **"Index Error"**. Run. The line is marked. **Explain with AI**. Show patch: Reject (nothing changes), show again, Accept (both editors update) | error line, AI explain, patch |
+| 6 | 3:30 | Mei | Samples menu, **"Quality Sample"**. Quality tab lists findings in five categories | quality panel |
 | 7 | 4:00 | Asha, Ravi | Asha requests access to Ravi's session. Ravi allows. Asha sees Ravi's console. Ravi revokes; it disappears instantly | debug access |
 | 8 | 4:45 | Ravi | Progress tab: "retry recommended" observation, no scores | progress page |
 | 9 | 5:15 | Presenter | Roadmap: execution canvas, predict-and-reflect checkpoints, classrooms. **Say plainly these are not built yet** | - |
@@ -68,3 +68,4 @@ If a step's lane is not ready, skip it out loud ("this panel is next") rather th
 - Privacy is enforced in the API: a run or explanation is readable only by its owner or someone they allowed.
 - AI explanations can be wrong; the student always decides whether a patch is applied.
 - It runs locally, not deployed. Roadmap: a real database and accounts, more languages, the execution canvas, predict-and-reflect, classrooms.
+

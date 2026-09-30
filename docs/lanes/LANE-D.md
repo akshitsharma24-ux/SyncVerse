@@ -56,13 +56,9 @@ One tile per participant: presence, last-run status, failed-run streak, stuck fl
 
 **Blueprint tasks:** T-A-09, T-D-09
 
-## Test hooks and shared data for Lane D (added after the first push)
+## Status: built and merged into main
 
-Put these `data-testid` names on your UI (full contract: `docs/TESTIDS.md`): `panel-debug` (root, add it first), `debug-request` (one per person, with `data-user`),
-`debug-incoming`, `debug-allow`, `debug-deny`, `debug-banner`, `debug-revoke`, `debug-mirror`; `panel-progress`, `progress-observation`;
-`samples-menu` and `sample-<id>`. The golden test also checks privacy through the API: `GET /api/run/<id>` must be 403 for anyone who is not the owner or
-an active grantee, 200 for them, and 403 again after revoke.
+Lane D is finished and merged into `main` (one squashed commit credited to Miti). Its real test hooks (`debug-panel`, `request-<userId>`, `access-modal`, `allow`, `viewing-banner`, `revoke`, `mirror`, `progress-panel`, `observations`, `samples-btn` ...) are listed in `docs/TESTIDS.md` and exercised by `npm run e2e:golden` (steps G2b and G9 run today; G8 needs Lane B's run routes). Your own tests: `node scripts/test-lane-d.mjs` (25 API checks) and `node scripts/e2e-lane-d.mjs` (18 browser checks).
 
-Shared data you can use today: `makeSeedEvents({ userId, roomCode })` (a believable history that triggers "Retry recommended" for loop boundaries),
-`OBSERVATION_RULE` (the exact threshold), `conceptsForCategory`, `CONCEPTS`, `fixtureGrants` (one DebugGrant per status), `fixturePresence`, `SAMPLES` (your Samples
-menu: 9 programs with titles and notes), `useToast()` for "Asha wants to view your session". Your steps in the demo test: G8 (debug access) and G9 (progress).
+After the merge reset your branch to main: `git fetch origin`, `git checkout lane-d-miti`, `git reset --hard origin/main`.
+

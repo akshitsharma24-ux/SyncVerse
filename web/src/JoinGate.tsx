@@ -65,7 +65,7 @@ export default function JoinGate() {
   }
 
   return (
-    <div className="frame">
+    <div className="page-frame">
       {/* nav */}
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 58, padding: '0 22px' }}>
         <Logo />

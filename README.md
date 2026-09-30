@@ -80,10 +80,11 @@ If an e2e run stalls while launching the browser, just run it again.
 
 Repo: https://github.com/akshitsharma24-ux/SyncVerse
 
-One branch per lane, all starting from the same skeleton commit:
+**`main` is the default branch and the integration branch.** It always holds the most complete, working version. Each person also has a lane branch:
 
 | Branch | Owner | Lane |
 |---|---|---|
+| `main` | everyone | integrated, demo-ready work (skeleton + Lane A + shared tooling + Lane D so far) |
 | `lane-a-akshit` | Akshit | editor sync, presence, video, frontend design |
 | `lane-b-simrit` | Simrit | run pipeline, console, code quality |
 | `lane-c-rahil` | Rahil | AI explain and patch |
@@ -94,14 +95,15 @@ git clone https://github.com/akshitsharma24-ux/SyncVerse.git
 cd SyncVerse
 git config core.autocrlf input
 git checkout lane-b-simrit        # your own branch
+git merge origin/main             # start from the latest main
 npm install
 copy .env.example .env            # then fill in your keys
 npm run dev
 ```
 
-- Work and push **only on your own lane branch**. Commit messages start with the task ID, for example `P-B1: poll Judge0 until done`.
-- To pick up another lane's work: `git fetch origin` then `git merge origin/lane-a-akshit` (or whichever branch).
-- Integration: at the first integration window (about 10:30 pm) create `main` from the most complete branch and merge the lanes into it one at a time, running `npm run smoke` and the e2e checks after each merge.
+- Work on your own lane branch and commit with the task ID: `P-B1: poll Judge0 until done`.
+- Merge `origin/main` into your branch often. When a task is done and `npm run typecheck`, `npm run smoke` and `npm run e2e:golden` pass, merge your branch into `main`.
+- No `Co-Authored-By` or "generated with" lines in commits (see CLAUDE.md).
 ## Layout
 
 ```
@@ -111,6 +113,7 @@ server/                Express; routes/*.ts one file per lane; collab.ts is the 
 docs/TRACKER.md        status + handoff;  docs/lanes/  one file per lane
 scripts/smoke.mjs      automated checks
 ```
+
 
 
 

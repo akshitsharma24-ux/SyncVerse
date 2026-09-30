@@ -112,7 +112,7 @@ input {
 }
 
 /* ---------- the frame and the hatch band (the reference's signature) ---------- */
-.frame {
+.page-frame {
   margin: 14px;
   border: 1px solid var(--ink);
   background: var(--paper);
@@ -535,7 +535,7 @@ input {
     border-right: 0 !important;
     border-bottom: 1px solid var(--rule-soft);
   }
-  .frame {
+  .page-frame {
     margin: 8px;
   }
 }
