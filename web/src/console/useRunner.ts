@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RunResult } from '@syncverse/shared';
 import { api, ApiError } from '../api';
 import { useEditor, useSessionUser, useWorkspace } from '../session';
+import { clearRunMarkers, markRunError } from './markers';
 
 export interface RunInfo {
   runner: 'judge0' | 'local';
@@ -48,16 +49,27 @@ export function useRunner() {
     alive.current = true;
     return () => {
       alive.current = false; // stops any polling loop
+      clearRunMarkers(editor);
     };
-  }, []);
+  }, [editor]);
 
   const finish = useCallback(
-    (r: RunResult) => {
+    (r: RunResult, mark = true) => {
       setRuns((prev) => [r, ...prev.filter((x) => x.id !== r.id)].slice(0, HISTORY));
       setSelectedId(r.id);
       setLastRun(r);
+      if (mark) markRunError(editor, r); // error line marker + highlight (or clears them)
     },
-    [setLastRun],
+    [setLastRun, editor],
+  );
+
+  /** After a page refresh the editor text arrives a moment later; mark the line only once it is there. */
+  const markWhenEditorReady = useCallback(
+    async (r: RunResult) => {
+      for (let i = 0; i < 30 && alive.current && !editor.getValue(); i++) await sleep(200);
+      if (alive.current && !busyRef.current) markRunError(editor, r);
+    },
+    [editor],
   );
 
   /** Polls one run until it finishes. Returns when done, gone, or given up (with a notice). */
@@ -107,6 +119,7 @@ export function useRunner() {
       setNotice(null);
       try {
         const { id } = await api.post<{ id: string }>('/api/run', { roomCode: me.roomCode, language: 'python', source, stdin });
+        clearRunMarkers(editor); // the server accepted a new run: the old error marker is out of date
         await follow(id);
       } catch (e) {
         if (alive.current) setNotice(apiMessage(e));
@@ -129,7 +142,8 @@ export function useRunner() {
       .then(async (r) => {
         if (!r || !alive.current || busyRef.current) return;
         if (isDone(r)) {
-          finish(r);
+          finish(r, false);
+          void markWhenEditorReady(r);
           return;
         }
         busyRef.current = true;
@@ -142,7 +156,7 @@ export function useRunner() {
         }
       })
       .catch(() => undefined);
-  }, [finish, follow]);
+  }, [finish, follow, markWhenEditorReady]);
 
   return { runs, selectedId, setSelectedId, busy, notice, info, run };
 }

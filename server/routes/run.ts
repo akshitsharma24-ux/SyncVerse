@@ -256,7 +256,7 @@ async function executeJudge0(input: ExecInput, onRunning: () => void): Promise<E
       status,
       stdout: clean(unb64(s.stdout)),
       stderr,
-      compileOutput: clean(unb64(s.compile_output)) || (status === 'runtime_error' ? clean(unb64(s.message)) : ''),
+      compileOutput: clean(unb64(s.compile_output)),
       timeMs: Number.isFinite(time) ? Math.round(time * 1000) : undefined,
       memoryKb,
     };

@@ -55,6 +55,24 @@ const stdoutOf = async (p) => {
   return p.$eval(T('run-stdout'), (e) => e.textContent);
 };
 
+
+// Text of the editor line(s) that carry the error highlight (matched through Monaco's absolute `top`), and squiggle count.
+const marked = (p) =>
+  p.evaluate(() => {
+    const lines = [...document.querySelectorAll('.monaco-editor .view-lines .view-line')];
+    return [...document.querySelectorAll('.monaco-editor .view-overlays .sv-error-line')].map((o) => {
+      const l = lines.find((x) => x.style.top === o.parentElement.style.top);
+      return l ? l.textContent.replace(/\u00a0/g, ' ') : null;
+    });
+  });
+const squiggles = (p) => p.$$eval('.monaco-editor .squiggly-error', (e) => e.length);
+const waitMarked = (p, present = true) =>
+  p.waitForFunction(
+    (want) => (document.querySelectorAll('.monaco-editor .view-overlays .sv-error-line').length > 0) === want,
+    present,
+    { timeout: 8000 },
+  );
+
 const PROG = 'name = input()\nprint("hello " + name)\n';
 const STARTER = 'def average(nums):\n    total = 0\n    for i in range(len(nums) + 1):\n        total += nums[i]\n    return total / len(nums)\n\n\nprint(average([3, 4, 5]))\n';
 
@@ -120,6 +138,64 @@ try {
     if (!/IndexError: list index out of range/.test(err)) throw new Error('stderr: ' + err.slice(-80));
     const row = await A.$eval(T('run-error'), (e) => e.textContent);
     if (!/IndexError/.test(row) || !/line 4/.test(row)) throw new Error('error row: ' + row);
+  });
+
+  await check('error line is highlighted and underlined in the editor (line 4: total += nums[i])', async () => {
+    await waitMarked(A);
+    const m = await marked(A);
+    eq(m.length, 1, 'highlighted lines');
+    if (!m[0].includes('total += nums[i]')) throw new Error('wrong line highlighted: ' + m[0]);
+    const q = await squiggles(A);
+    if (q < 1) throw new Error('no squiggle');
+  });
+
+  await check('clicking the error row scrolls a far-away editor back to the failing line', async () => {
+    await sleep(2200);
+    await setCode(A, STARTER + '\n'.repeat(90) + '# end\n');
+    eq(await runAndWait(A), 'runtime_error', 'status');
+    await waitMarked(A);
+    await A.click('.monaco-editor .view-lines');
+    await A.keyboard.press('Control+End'); // scroll to the bottom; line 4 leaves the viewport
+    await waitMarked(A, false);
+    await A.click(T('run-error'));
+    await waitMarked(A);
+    if (!(await marked(A))[0].includes('total += nums[i]')) throw new Error('jumped to the wrong line');
+    await A.click('.monaco-editor .view-lines');
+    await A.keyboard.press('Control+End');
+    await waitMarked(A, false);
+    await A.click(T('run-error-line'));
+    await waitMarked(A);
+  });
+
+  await check('reload restores the marker on the failing line', async () => {
+    await A.reload();
+    await A.waitForSelector('.monaco-editor', { timeout: 20000 });
+    await waitMarked(A);
+    if (!(await marked(A))[0].includes('total += nums[i]')) throw new Error('wrong line after reload');
+  });
+
+  await check('a successful run clears the marker and the underline', async () => {
+    await sleep(2200);
+    await setCode(A, 'print("fixed")\n');
+    eq(await runAndWait(A), 'success', 'status');
+    await waitMarked(A, false);
+    eq(await squiggles(A), 0, 'squiggles');
+  });
+
+  await check('no marker when a collaborator edits the failing line while the run is in flight', async () => {
+    await sleep(2200);
+    await setCode(A, STARTER);
+    await A.waitForFunction(() => window.__sv.editor.getValue().includes('def average'));
+    const before = await runId(A);
+    await A.click(T('run-btn'));
+    await setCode(B, STARTER.replace('total += nums[i]', 'total += nums[i] + 0')); // line 4 changes at once
+    await A.waitForFunction((b) => {
+      const s = document.querySelector('[data-testid=run-status]');
+      return s?.dataset.runId !== b && s?.dataset.status !== 'running';
+    }, before, { timeout: 40000 });
+    eq(await A.$eval(T('run-status'), (e) => e.dataset.status), 'runtime_error', 'run status');
+    await sleep(300);
+    eq((await marked(A)).length, 0, 'highlight count');
   });
 
   await check('a syntax error is shown as Compile error', async () => {

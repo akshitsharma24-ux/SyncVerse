@@ -93,119 +93,146 @@ export function RunPanel() {
   const shown = tab === 'err' ? errText : (viewed?.stdout ?? '');
 
   return (
-    <div className="rc" ref={root} data-testid="run-panel">
-      <div className="rc-left">
-        <div className="rc-bar">
-          <button
-            type="button"
-            className="btn btn-sm"
-            data-testid="run-btn"
-            disabled={busy}
-            onClick={() => runRef.current()}
-            title="Run the shared file with your input (Ctrl+Enter)"
-          >
-            <svg width="10" height="11" viewBox="0 0 10 11" aria-hidden="true">
-              <path d="M1 1l8 4.5L1 10z" fill="currentColor" />
-            </svg>
-            {busy ? 'Running…' : 'Run'}
-          </button>
-          <span className="eyebrow">Ctrl+Enter</span>
-          {badge && (
-            <span className="rc-badge" data-tone={badge.tone} data-testid="run-status" data-status={busy ? 'running' : viewed?.status} data-run-id={viewed?.id} role="status">
-              <i />
-              {badge.label}
-              {busy && elapsed >= 2 ? ` ${elapsed}s` : ''}
-            </span>
-          )}
-        </div>
-        <label className="eyebrow" htmlFor="rc-stdin">
-          Input (stdin)
-        </label>
-        <textarea
-          id="rc-stdin"
-          className="input code rc-stdin"
-          data-testid="stdin-input"
-          value={stdin}
-          onChange={(e) => setStdin(e.target.value)}
-          placeholder="Text your program reads, e.g. with input()"
-          spellCheck={false}
-          maxLength={10000}
-        />
-      </div>
-
-      <div className="rc-right">
-        <div className="rc-head">
-          <div className="seg rc-seg" role="group" aria-label="Output type">
-            <button type="button" aria-pressed={tab === 'out'} onClick={() => setTab('out')} data-testid="tab-stdout">
-              Output
+    <div className="rc-root" ref={root} data-testid="run-panel">
+      <div className="rc">
+        <div className="rc-left">
+          <div className="rc-bar">
+            <button
+              type="button"
+              className="btn btn-sm"
+              data-testid="run-btn"
+              disabled={busy}
+              onClick={() => runRef.current()}
+              title="Run the shared file with your input (Ctrl+Enter)"
+            >
+              <svg width="10" height="11" viewBox="0 0 10 11" aria-hidden="true">
+                <path d="M1 1l8 4.5L1 10z" fill="currentColor" />
+              </svg>
+              {busy ? 'Running…' : 'Run'}
             </button>
-            <button type="button" aria-pressed={tab === 'err'} onClick={() => setTab('err')} data-testid="tab-stderr">
-              Errors{errText ? ' •' : ''}
-            </button>
-          </div>
-          {viewed && !busy && (
-            <span className="rc-meta" data-testid="run-meta">
-              {viewed.timeMs !== undefined ? fmtTime(viewed.timeMs) : ''}
-              {viewed.timeMs !== undefined && viewed.memoryKb !== undefined ? ' · ' : ''}
-              {viewed.memoryKb !== undefined ? fmtMem(viewed.memoryKb) : ''}
-            </span>
-          )}
-        </div>
-
-        {info && !info.sandboxed && (
-          <div className="rc-note" data-tone="warn" data-testid="run-unsandboxed">
-            Demo runner on this server: code is not sandboxed.
-          </div>
-        )}
-        {notice && (
-          <div className="rc-note" data-tone="warn" role="alert" data-testid="run-notice">
-            {notice}
-          </div>
-        )}
-
-        <pre className="rc-out" data-stale={busy && !!viewed} data-testid={tab === 'err' ? 'run-stderr' : 'run-stdout'} aria-live="polite">
-          {busy && !viewed ? (
-            <span className="rc-empty">Running…</span>
-          ) : !viewed ? (
-            <span className="rc-empty">Press Run (Ctrl+Enter) to run the shared file with your own input. Only you see the result.</span>
-          ) : shown ? (
-            shown
-          ) : (
-            <span className="rc-empty">{tab === 'err' ? 'No errors.' : '(no output)'}</span>
-          )}
-        </pre>
-
-        {failed && viewed && (
-          <div className="rc-err" data-tone={viewed.status === 'timeout' || viewed.status === 'memory_limit' ? 'warn' : 'danger'} data-testid="run-error">
-            <span>{viewed.errorMessage}</span>
-            {viewed.errorLine !== undefined && (
-              <button type="button" data-testid="run-error-line" onClick={() => editor.highlightLine(viewed.errorLine as number)}>
-                line {viewed.errorLine}
-              </button>
-            )}
-          </div>
-        )}
-
-        {runs.length > 0 && (
-          <div className="rc-history" data-testid="run-history" aria-label="Your last runs">
-            <span className="eyebrow">Last runs</span>
-            {runs.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                className="rc-chip"
-                data-testid="run-history-item"
-                data-tone={STATUS[r.status].tone}
-                aria-pressed={r.id === viewed?.id}
-                title={`${STATUS[r.status].label}${r.stdin ? ` · input: ${r.stdin.slice(0, 40)}` : ''}`}
-                onClick={() => setSelectedId(r.id)}
+            <span className="eyebrow">Ctrl+Enter</span>
+            {badge && (
+              <span
+                className="rc-badge"
+                data-tone={badge.tone}
+                data-testid="run-status"
+                data-status={busy ? 'running' : viewed?.status}
+                data-run-id={viewed?.id}
+                role="status"
               >
                 <i />
-                {clock(r.createdAt)}
-              </button>
-            ))}
+                {badge.label}
+                {busy && elapsed >= 2 ? ` ${elapsed}s` : ''}
+              </span>
+            )}
           </div>
-        )}
+          <label className="eyebrow" htmlFor="rc-stdin">
+            Input (stdin)
+          </label>
+          <textarea
+            id="rc-stdin"
+            className="input code rc-stdin"
+            data-testid="stdin-input"
+            value={stdin}
+            onChange={(e) => setStdin(e.target.value)}
+            placeholder="Text your program reads, e.g. with input()"
+            spellCheck={false}
+            maxLength={10000}
+          />
+        </div>
+
+        <div className="rc-right">
+          <div className="rc-head">
+            <div className="seg rc-seg" role="group" aria-label="Output type">
+              <button type="button" aria-pressed={tab === 'out'} onClick={() => setTab('out')} data-testid="tab-stdout">
+                Output
+              </button>
+              <button type="button" aria-pressed={tab === 'err'} onClick={() => setTab('err')} data-testid="tab-stderr">
+                Errors{errText ? ' •' : ''}
+              </button>
+            </div>
+            {viewed && !busy && (
+              <span className="rc-meta" data-testid="run-meta">
+                {viewed.timeMs !== undefined ? fmtTime(viewed.timeMs) : ''}
+                {viewed.timeMs !== undefined && viewed.memoryKb !== undefined ? ' · ' : ''}
+                {viewed.memoryKb !== undefined ? fmtMem(viewed.memoryKb) : ''}
+              </span>
+            )}
+            {runs.length > 0 && (
+              <div className="rc-history" data-testid="run-history" aria-label="Your last runs">
+                {runs.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    className="rc-chip"
+                    data-testid="run-history-item"
+                    data-tone={STATUS[r.status].tone}
+                    aria-pressed={r.id === viewed?.id}
+                    title={`${STATUS[r.status].label}${r.stdin ? ` · input: ${r.stdin.slice(0, 40)}` : ''}`}
+                    onClick={() => setSelectedId(r.id)}
+                  >
+                    <i />
+                    {clock(r.createdAt)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {info && !info.sandboxed && (
+            <div className="rc-note" data-tone="warn" data-testid="run-unsandboxed">
+              Demo runner on this server: code is not sandboxed.
+            </div>
+          )}
+          {notice && (
+            <div className="rc-note" data-tone="warn" role="alert" data-testid="run-notice">
+              {notice}
+            </div>
+          )}
+
+          {failed && viewed && (
+            <div
+              className="rc-err"
+              data-tone={viewed.status === 'timeout' || viewed.status === 'memory_limit' ? 'warn' : 'danger'}
+              data-clickable={viewed.errorLine !== undefined}
+              data-testid="run-error"
+              onClick={() => viewed.errorLine !== undefined && editor.highlightLine(viewed.errorLine)}
+            >
+              <span>{viewed.errorMessage}</span>
+              {viewed.errorLine !== undefined && (
+                <button
+                  type="button"
+                  data-testid="run-error-line"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    editor.highlightLine(viewed.errorLine as number);
+                  }}
+                >
+                  line {viewed.errorLine}
+                </button>
+              )}
+            </div>
+          )}
+
+          <pre
+            className="rc-out"
+            data-stale={busy && !!viewed}
+            data-testid={tab === 'err' ? 'run-stderr' : 'run-stdout'}
+            aria-live="polite"
+          >
+            {busy && !viewed ? (
+              <span className="rc-empty">Running…</span>
+            ) : !viewed ? (
+              <span className="rc-empty">
+                Press Run (Ctrl+Enter) to run the shared file with your own input. Only you see the result.
+              </span>
+            ) : shown ? (
+              shown
+            ) : (
+              <span className="rc-empty">{tab === 'err' ? 'No errors.' : '(no output)'}</span>
+            )}
+          </pre>
+        </div>
       </div>
     </div>
   );

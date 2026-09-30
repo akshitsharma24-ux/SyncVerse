@@ -7,11 +7,11 @@
 
 ---------------------------------------------------------------------------------------------------
 
-## 1. RESUME HERE  (last updated: 2026-09-30, end of step S4)
+## 1. RESUME HERE  (last updated: 2026-09-30, end of step S5)
 
-- **Current position:** S0-S4 DONE (run pipeline, error parser, console panel). **Next action: S5 (error line marking + click-to-jump), when Simrit says go.**
-- **Built so far:** `server/routes/run.ts`; `web/src/console/{index.tsx,useRunner.ts,console.css}`; tests `scripts/laneb-run.mjs` (18), `scripts/laneb-parse.mjs` (16), `scripts/laneb-console-e2e.mjs` (12, three real browsers). Still stubs: `server/routes/analyze.ts`, `web/src/quality/index.tsx`.
-- **Where S5 plugs in:** `useRunner.ts` `finish(r)` is called once per finished run (also on reload with the latest run). There, publish the error marker (`editor.setMarkers([{line: r.errorLine, message: r.errorMessage, severity:'error'}])` + `editor.highlightLine(r.errorLine)`) and clear both when a new run starts / the run succeeds. `index.tsx` already renders the error row (`data-testid=run-error`) with a button `run-error-line` that calls `editor.highlightLine(errorLine)`. Create the shared marker module (run markers + lint markers merged, one `setMarkers` call) in `web/src/console/markers.ts` so S7 can reuse it.
+- **Current position:** S0-S5 DONE. Every "never cut" Lane B item (P-B1, P-B2, P-B3) is finished and tested. **Next action: S6 (quality analysis SERVER, `server/routes/analyze.ts`, six rules), when Simrit says go.**
+- **Built so far:** `server/routes/run.ts`; `web/src/console/{index.tsx,useRunner.ts,markers.ts,console.css}`; tests `scripts/laneb-run.mjs` (18), `scripts/laneb-parse.mjs` (16), `scripts/laneb-console-e2e.mjs` (16, three real browsers, needs `npm run dev`). Still stubs: `server/routes/analyze.ts`, `web/src/quality/index.tsx`.
+- **For S7 (quality panel):** publish lint markers ONLY through `publishMarkers(editor, 'lint', markers)` from `web/src/console/markers.ts` (merges with the run-error marker in one `setMarkers` call; `setMarkers` replaces everything). Call `publishMarkers(editor, 'lint', [])` on unmount. Note `editor.highlightLine` paints a RED full-line band (`.sv-error-line`, owned by Lane A) and scrolls the line into view; also `useRunner` calls `clearRunMarkers` (which does `highlightLine(null)`) when a new run starts.
 - **Observation for Akshit (Lane A shell, not mine):** at 390 px width the workspace gives the console column 0 px (the fixed 300+ px side dock takes the space); desktop and 820 px tablet are fine. Only matters if the demo is on a phone.
 - **What S4 can rely on (RunResult fields the server now fills):** `status`, `stdout`, `stderr`, `compileOutput`, `timeMs`, `memoryKb`, and for failures `errorLine` (1-based, only when it is inside the program) + `errorMessage` (e.g. `IndexError: list index out of range`; for `timeout` the message is "Time limit exceeded (5 s). Check for an infinite loop." with NO errorLine; for `memory_limit` "Memory limit exceeded (128 MB)."). `service_error` runs carry the friendly reason in `stderr`. A run is `queued` -> `running` -> terminal; poll `GET /api/run/:id`. `GET /api/run-info` -> `{runner:'judge0'|'local', sandboxed, languages:['python']}`. Expected latency on the public Judge0: ~1.5-2.5 s (timeout case ~6.5 s). POST errors: 400 (bad input, body `{error}`), 401, 429 (`{error}` friendly text), all via `ApiError` (`err.status`, `err.body.error`).
 - **Re-run the tests any time:** `node scripts/laneb-run.mjs` (Judge0) and `node scripts/laneb-run.mjs --local` (local runner) start their own servers on ports 4401-4403 (no `npm run dev` needed); `node --import tsx scripts/laneb-parse.mjs` for the parser.
@@ -95,7 +95,7 @@ Status values: TODO, DOING, DONE, BLOCKED. "Plan ID" = task ID in the overnight 
 | S2 | P-B1 | MUST | Run pipeline `server/routes/run.ts` (POST/GET, statuses, privacy, events, rate limit) | **DONE** (16/16 Judge0, 16/16 local) | S1 |
 | S3 | (P-B1/B3) | MUST | Python traceback parser -> errorLine/errorMessage (in run.ts) | **DONE** (16/16 unit, 18/18 Judge0, 18/18 local) | S2 |
 | S4 | P-B2 | MUST | Console panel (Run, Ctrl+Enter, stdin, tabs, badge, last 5, lock, setLastRun) | **DONE** (12/12 three-user e2e) | S2 (S3 for error rows) |
-| S5 | P-B3 | MUST | Error line marking + click to jump | TODO | S3, S4 |
+| S5 | P-B3 | MUST | Error line marking + click to jump | **DONE** (16/16 console e2e) | S3, S4 |
 | S6 | P-B4 | MUST | Quality analysis server `analyze.ts` (six rules) | TODO | S0 |
 | S7 | P-B4 | MUST | Quality panel (grouped, click-to-jump, markers, 1.5 s debounce) | TODO | S6, S5 (marker merge) |
 | S8 | P-B5 | SHOULD | More languages: C, C++, Java, JavaScript | TODO | S2-S5 green |
@@ -211,7 +211,19 @@ TESTS: e2e with three real sessions (Edge/playwright-core like Lane A's scripts)
 DONE WHEN (plan): three people run the same file with different stdin and each sees only their own output.
 LEFT: everything.
 
-### S5 - P-B3 Error line marking  -> TODO
+### S5 - P-B3 Error line marking  -> DONE (2026-09-30)
+DONE (new `web/src/console/markers.ts`; edits in `useRunner.ts`, `index.tsx`, `console.css`, and one server tweak in `run.ts`):
+- [x] `markers.ts`: `publishMarkers(editor, 'run'|'lint', markers)` keeps both sources and calls `setMarkers` once with the merge (decision D5 implemented); `clearRunMarkers`; `markRunError(editor, run)`.
+- [x] A failed run with `errorLine` + `errorMessage` -> red marker (squiggle) + line highlight + scroll into view (Lane A's `highlightLine` already reveals, so no request to Akshit is needed; R3 closed). Marker is cleared when a new run is accepted by the server and on a successful/no-line run (timeout has no line). The markers are also removed when the panel unmounts (leaving the room).
+- [x] Safety: a marker is shown only if that line has the same text in the editor as in the text that was run, so a collaborator editing the failing line meanwhile never causes a wrong-line marker (tested).
+- [x] Reload: `/api/runs/latest` restores the run and the marker, waiting up to 6 s for the editor text to arrive first (bug found by the test: restoring before the editor synced silently skipped the marker; fixed with `markWhenEditorReady`).
+- [x] Clicking the error row OR its `line N` button jumps back to the line (tested with a 95-line file scrolled to the bottom).
+- [x] Layout fixes found in screenshots: (1) error row moved ABOVE the output so it is always visible; (2) output pane scrolls inside the console instead of growing (wrapping flex could not constrain height; now a CSS grid + container query: two columns when the console is wider than 560 px, stacked below); (3) last-runs chips moved into the tabs row; (4) removed Judge0's generic "Exited with error status 1" line from the Errors tab (server: compile_output only).
+- [x] Files formatted with prettier (single quotes, width 130) to match Lane A's style; the repo itself has no prettier config.
+- [x] Tests: `laneb-console-e2e.mjs` 16/16 (adds: highlight + squiggle on the line containing `total += nums[i]`; jump back after scrolling away; reload restores marker; success clears it; no marker after a concurrent edit of the failing line). Regression: typecheck clean, build OK, smoke 8/8, e2e 13/13, e2e:entry 11/11, laneb-run 18/18 (Judge0) and 18/18 (local), laneb-parse 16/16. Screenshots reviewed at 1300 and 820 px.
+- Cross-lane confirmation: Lane C's placeholder AI panel already displays `last run: runtime_error (line 4)`, so `setLastRun` reaches other lanes.
+LEFT: nothing for S5.
+Original plan for reference:
 DO: on a failed run with `errorLine`, call `editor.setMarkers([{line, message, severity:'error'}])` and `editor.highlightLine(errorLine)`; the console error row is clickable and calls `highlightLine(errorLine)` again (jump). On the next run start or on success: clear the run marker and the highlight.
 Risk R2: `setMarkers` replaces ALL markers, and the quality panel (S7) also uses it. Solve with one tiny shared module inside Lane B's folders (e.g. `web/src/console/markers.ts`) that keeps `runMarkers` and `lintMarkers` separately and calls `setMarkers(merge)` once. Build it now so S7 reuses it.
 Risk R3: if `highlightLine` alone does not scroll the line into view, do NOT edit Lane A's code: write a note in section 8 and ask Akshit (via the group chat) for a `revealLine` on `EditorHandle`.
@@ -332,3 +344,4 @@ LEFT: everything.
 - 2026-09-30 S2: wrote run.ts; typecheck clean; laneb-run.mjs 16/16 Judge0. Local run found a bug: a program printing > 128 KB was killed (runtime_error) while Judge0 truncates; fixed to drain and drop output past the cap. Added a local-runner secrets check. 16/16 local. Committed and pushed to `origin/lane-b-simrit` (code, scripts, tracker).
 - 2026-09-30 S3: added exceptionLine/parsePythonError/annotateError to run.ts. Unit tests 16/16 first time; laneb-run extended with real error-line assertions: 18/18 on Judge0 and local. Typecheck clean. Committed and pushed as P-B3(server)... see git log.
 - 2026-09-30 S4: built console panel (index.tsx, useRunner.ts, console.css). Typecheck clean first time. First e2e run failed only in the 390 px session (shell gives the console 0 width; Lane A's layout, not a bug in the panel); replaced with an 820 px check. Made the double-press test rigorous (assert no 429 notice). Final: 12/12 console e2e, regression suites green. Committed and pushed.
+- 2026-09-30 S5: wrote markers.ts and wired it. Three bugs found by the browser test and screenshots, all fixed: marker missing after reload (editor text not synced yet); error row below the fold and output pane growing past the console (layout); noisy Judge0 'Exited with error status 1' line. Two test-only mistakes fixed (Monaco puts the highlight `top` on the parent; focus stayed in the console). Final 16/16 console e2e, all regressions green. Committed and pushed.
