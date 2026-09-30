@@ -108,16 +108,32 @@ try {
     const r = await runAndWait(A, 'cat', 'def greet(name)\n    print(name)\n');
     eq(r.status, 'compile_error', 'status');
     if (!/SyntaxError/.test(r.stderr)) throw new Error('stderr lacks SyntaxError: ' + r.stderr);
+    eq(r.errorLine, 1, 'errorLine');
+    if (!/^SyntaxError/.test(r.errorMessage ?? '')) throw new Error('errorMessage: ' + r.errorMessage);
   });
   await check('NameError -> runtime_error', async () => {
     const r = await runAndWait(A, 'cat', 'total = 0\nprint(totl)\n');
     eq(r.status, 'runtime_error', 'status');
     if (!/NameError/.test(r.stderr)) throw new Error('stderr lacks NameError');
+    eq(r.errorLine, 2, 'errorLine');
   });
   await check('IndexError starter -> runtime_error', async () => {
     const r = await runAndWait(A, 'cat', STARTER);
     eq(r.status, 'runtime_error', 'status');
     if (!/IndexError/.test(r.stderr)) throw new Error('stderr lacks IndexError');
+    eq(r.errorLine, 4, 'errorLine (the golden-path sample)');
+    eq(r.errorMessage, 'IndexError: list index out of range', 'errorMessage');
+  });
+  await check('RecursionError -> runtime_error, errorLine 2', async () => {
+    const r = await runAndWait(A, 'cat', 'def f(n):\n    return f(n + 1)\nprint(f(0))\n');
+    eq(r.status, 'runtime_error', 'status');
+    eq(r.errorLine, 2, 'errorLine');
+    if (!/RecursionError/.test(r.errorMessage ?? '')) throw new Error('errorMessage: ' + r.errorMessage);
+  });
+  await check('successful run has no errorLine / errorMessage', async () => {
+    const r = await runAndWait(A, 'cat', 'print(2)');
+    eq(r.errorLine, undefined, 'errorLine');
+    eq(r.errorMessage, undefined, 'errorMessage');
   });
   await check('huge output is truncated to 64 KB', async () => {
     const r = await runAndWait(A, 'dan', "print('x' * 200000)");

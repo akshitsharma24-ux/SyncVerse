@@ -92,14 +92,51 @@ const clean = (s: string) => s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 const capHead = (s: string, max: number) => (s.length > max ? s.slice(0, max) + '\n[output truncated]' : s);
 const capTail = (s: string, max: number) => (s.length > max ? '[earlier output truncated]\n' + s.slice(-max) : s);
 
-/** Name of the exception on the last line of a Python-style error, e.g. "IndexError". */
-export function errorKind(stderr: string): string | undefined {
-  const lines = stderr.split('\n').map((l) => l.trim()).filter(Boolean);
+// ---- Python error parsing (P-B3) ---------------------------------------------------------------------
+/** Last unindented "Name: message" line of a Python error, e.g. "IndexError: list index out of range". */
+function exceptionLine(stderr: string): string | undefined {
+  const lines = stderr.split('\n');
   for (let i = lines.length - 1; i >= 0; i--) {
-    const m = /^([A-Za-z_][\w.]*(?:Error|Exception|Exit|Interrupt|Warning))\b/.exec(lines[i]);
-    if (m) return m[1].split('.').pop();
+    const l = lines[i];
+    if (!l || /^\s/.test(l) || /^(Traceback|During handling|The above exception|\[)/.test(l)) continue;
+    if (/^[A-Za-z_][\w.]*(:|$)/.test(l)) return l.trim();
   }
   return undefined;
+}
+
+/** Name of the exception in a Python-style error, e.g. "IndexError". */
+export function errorKind(stderr: string): string | undefined {
+  const l = exceptionLine(stderr);
+  return l ? /^[A-Za-z_][\w.]*/.exec(l)?.[0].split('.').pop() : undefined;
+}
+
+/**
+ * Line (1-based, inside the student's own program) and message of a Python failure. The line comes from the last
+ * `File ".../script.py", line N` frame, never from a model. Python 3.8 to 3.13 formats are handled (caret lines ignored).
+ */
+export function parsePythonError(stderr: string, source: string): { line?: number; message?: string } {
+  const lines = stderr.split('\n');
+  const start = lines.lastIndexOf('Traceback (most recent call last):'); // only the final exception's frames
+  let line: number | undefined;
+  for (let i = Math.max(start, 0); i < lines.length; i++) {
+    const m = /^\s*File "([^"]*)", line (\d+)/.exec(lines[i]);
+    if (m && /^script\.py$/.test(m[1].split(/[\\/]/).pop() ?? '')) line = Number(m[2]);
+  }
+  const total = source.replace(/\r\n/g, '\n').split('\n').length;
+  if (line !== undefined && (line < 1 || line > total)) line = undefined;
+  const message = exceptionLine(stderr)?.slice(0, 300);
+  return { line, message };
+}
+
+/** Sets errorLine / errorMessage on a finished failed run. */
+function annotateError(run: RunResult): void {
+  if (run.status === 'timeout') run.errorMessage = 'Time limit exceeded (5 s). Check for an infinite loop.';
+  else if (run.status === 'memory_limit') run.errorMessage = 'Memory limit exceeded (128 MB).';
+  else if (run.status === 'runtime_error' || run.status === 'compile_error') {
+    const { line, message } = parsePythonError(run.stderr, run.source);
+    run.errorLine = line;
+    run.errorMessage = message;
+  }
 }
 
 // ---- runner interface ----------------------------------------------------------------------------
@@ -294,6 +331,7 @@ async function processRun(run: RunResult): Promise<void> {
   }
   if (run.status !== 'service_error') {
     try {
+      annotateError(run);
       const kind = run.status === 'success' ? 'success' : run.status === 'timeout' || run.status === 'memory_limit' ? run.status : (errorKind(run.stderr) ?? run.status);
       logEvent({ userId: run.ownerId, roomCode: run.roomCode, at: Date.now(), type: 'run', category: kind, ok: run.status === 'success' });
     } catch (e) {

@@ -7,12 +7,12 @@
 
 ---------------------------------------------------------------------------------------------------
 
-## 1. RESUME HERE  (last updated: 2026-09-30, end of step S2)
+## 1. RESUME HERE  (last updated: 2026-09-30, end of step S3)
 
-- **Current position:** S0, S1, S2 DONE. **Next action: S3 (Python traceback parser -> `errorLine` / `errorMessage`, inside `server/routes/run.ts`), when Simrit says go.**
-- **Built so far:** `server/routes/run.ts` (full run pipeline, see S2 below) and `scripts/laneb-run.mjs` (16 API checks). Still stubs: `server/routes/analyze.ts`, `web/src/console/index.tsx`, `web/src/quality/index.tsx`.
-- **Where S3 plugs in:** `processRun()` in `run.ts`, right after the outcome is stored and BEFORE `logEvent`; `errorKind(stderr)` (exported) already extracts the exception name. Set `run.errorLine` / `run.errorMessage` only for failures. Stderr is stored tail-capped (16 KB) so parse the stored `run.stderr`.
-- **Re-run the tests any time:** `node scripts/laneb-run.mjs` (Judge0) and `node scripts/laneb-run.mjs --local` (local runner). They start their own servers on ports 4401-4403; no `npm run dev` needed.
+- **Current position:** S0, S1, S2, S3 DONE (the whole SERVER side of run + error line is finished). **Next action: S4 (Console panel, `web/src/console/`), when Simrit says go.**
+- **Built so far:** `server/routes/run.ts` (run pipeline + Python error parser), `scripts/laneb-run.mjs` (18 API checks), `scripts/laneb-parse.mjs` (16 parser unit checks). Still stubs: `server/routes/analyze.ts`, `web/src/console/index.tsx`, `web/src/quality/index.tsx`.
+- **What S4 can rely on (RunResult fields the server now fills):** `status`, `stdout`, `stderr`, `compileOutput`, `timeMs`, `memoryKb`, and for failures `errorLine` (1-based, only when it is inside the program) + `errorMessage` (e.g. `IndexError: list index out of range`; for `timeout` the message is "Time limit exceeded (5 s). Check for an infinite loop." with NO errorLine; for `memory_limit` "Memory limit exceeded (128 MB)."). `service_error` runs carry the friendly reason in `stderr`. A run is `queued` -> `running` -> terminal; poll `GET /api/run/:id`. `GET /api/run-info` -> `{runner:'judge0'|'local', sandboxed, languages:['python']}`. Expected latency on the public Judge0: ~1.5-2.5 s (timeout case ~6.5 s). POST errors: 400 (bad input, body `{error}`), 401, 429 (`{error}` friendly text), all via `ApiError` (`err.status`, `err.body.error`).
+- **Re-run the tests any time:** `node scripts/laneb-run.mjs` (Judge0) and `node scripts/laneb-run.mjs --local` (local runner) start their own servers on ports 4401-4403 (no `npm run dev` needed); `node --import tsx scripts/laneb-parse.mjs` for the parser.
 - **Runner decision (S1):** hosted Judge0 = public instance `https://ce.judge0.com` (no key, set in `.env` as `JUDGE0_URL`; `JUDGE0_API_KEY`/`JUDGE0_API_HOST` are empty and must be sent only if non-empty). Verified working (see section 6). Still build the local-subprocess fallback behind the same `execute()` interface (the public instance has no SLA/quota guarantee; if it is down at demo time, the fallback is used and labelled "not sandboxed").
 - **Push policy (Simrit, 2026-09-30):** she allows pushing this tracker and Lane B scripts/new files, ONLY to `origin/lane-b-simrit`. The tracker is git-excluded by `.git/info/exclude`, so it needs `git add -f "docs/my refrence/LANE-B-TRACKER.md"`. Do NOT push the reference PDFs (Simrit: they stay on her device); add only the tracker file by name. Lane B scripts go in `scripts/laneb-*.mjs` (new files only; never edit Lane A's existing scripts).
 - **State of the machine right now:** `npm run dev` was started in the background (web http://localhost:5173, API http://localhost:4000). It stops when that session ends. To restart: `npm run dev` in the repo root. Check http://localhost:4000/api/health.
@@ -91,7 +91,7 @@ Status values: TODO, DOING, DONE, BLOCKED. "Plan ID" = task ID in the overnight 
 | S0 | (P-B0 prep) | SETUP | Branch sync, local exclude, install, baseline checks, this tracker | **DONE** | - |
 | S1 | P-B0 | SETUP | Judge0 hello-world (scratch script), pick runner, note quota | **DONE** | S0 |
 | S2 | P-B1 | MUST | Run pipeline `server/routes/run.ts` (POST/GET, statuses, privacy, events, rate limit) | **DONE** (16/16 Judge0, 16/16 local) | S1 |
-| S3 | (P-B1/B3) | MUST | Python traceback parser -> errorLine/errorMessage (in run.ts) | TODO | S2 |
+| S3 | (P-B1/B3) | MUST | Python traceback parser -> errorLine/errorMessage (in run.ts) | **DONE** (16/16 unit, 18/18 Judge0, 18/18 local) | S2 |
 | S4 | P-B2 | MUST | Console panel (Run, Ctrl+Enter, stdin, tabs, badge, last 5, lock, setLastRun) | TODO | S2 (S3 for error rows) |
 | S5 | P-B3 | MUST | Error line marking + click to jump | TODO | S3, S4 |
 | S6 | P-B4 | MUST | Quality analysis server `analyze.ts` (six rules) | TODO | S0 |
@@ -169,7 +169,15 @@ TESTS (write `scripts/laneb-run.mjs`, decision pending): hello-world; stdin prog
 DONE WHEN (plan): hello-world and a stdin program return correct output; an infinite loop returns timeout; a SyntaxError returns compile_error with stderr.
 LEFT: everything.
 
-### S3 - Error parsing  -> TODO
+### S3 - Error parsing  -> DONE (2026-09-30)
+DONE (all in `server/routes/run.ts`; new exports `parsePythonError(stderr, source)`, `errorKind(stderr)`, `mapJudge0Status` for tests):
+- [x] `exceptionLine()`: last unindented `Name: message` line (skips `Traceback`, `During handling`, `The above exception`, `[...]` notices, and indented frame/caret lines). Works for custom exceptions too (no "Error" suffix needed).
+- [x] `parsePythonError`: takes frames only from the LAST `Traceback (most recent call last):` block (so chained exceptions use the final one), keeps the last `File ".../script.py", line N` frame whose file basename is `script.py` (Judge0 `/box/script.py`, local Windows temp path, or bare `script.py`); ignores `<string>`, stdlib and caret (`^^^`, `~~~`) lines; drops a line number that is outside the program (never a wrong marker); handles CRLF source; SyntaxError/IndentationError (no Traceback header) work.
+- [x] `annotateError()` runs in `processRun()` before `logEvent`: sets `errorLine`/`errorMessage` for `runtime_error` and `compile_error`; `timeout` and `memory_limit` get a message only (no line); success/service_error get nothing.
+- [x] Tests: `scripts/laneb-parse.mjs` 16/16 (py 3.8 and 3.12 formats, SyntaxError, IndentationError, NameError with hint, RecursionError with repeated frames, chained exceptions, stdlib frame, Windows path, out-of-range line, `<string>` frames, empty/truncated stderr, CRLF, status mapping table). `scripts/laneb-run.mjs` now 18/18 on Judge0 and 18/18 local, including REAL runs: IndexError starter -> errorLine 4 and message `IndexError: list index out of range`; NameError -> 2; SyntaxError -> 1; RecursionError -> 2; timeout -> no line + infinite-loop message; success -> no error fields. Typecheck clean.
+LEFT: parsers for C/C++/Java/JavaScript (gcc `file:LINE:COL: error:`, javac `Main.java:LINE: error:`, Node stack) belong to S8.
+Bug found while testing: none in the parser; one test-script slip (a multi-line string literal from a bad patch) fixed.
+Original plan for reference:
 In `server/routes/run.ts`. Parse Python tracebacks into `errorLine` + `errorMessage`.
 - Find the LAST `File "<...script.py>", line N, in ...` frame that belongs to the user's program (skip `<frozen ...>` and stdlib paths); `errorMessage` = the final exception line (e.g. `IndexError: list index out of range`).
 - SyntaxError/IndentationError: line from the `File "...", line N` header; message = last line (`SyntaxError: expected ':'`, etc. Python 3.10+ wording varies; do not depend on exact text).
@@ -310,3 +318,4 @@ LEFT: everything.
 - 2026-09-30 Simrit answered: Judge0 URL set in `.env` (`https://ce.judge0.com`, no key); tracker and scripts may be pushed to her branch. S1 started.
 - 2026-09-30 S1: scratch script run against Judge0. All six programs behaved (results in section 6). Concurrency: 3 parallel + burst of 12, all Accepted. Ids differ from the blueprint (newer instance), so name-mapping is mandatory. S1 DONE. Nothing committed; no repo files changed except this tracker. Waiting for go-ahead on S2.
 - 2026-09-30 S2: wrote run.ts; typecheck clean; laneb-run.mjs 16/16 Judge0. Local run found a bug: a program printing > 128 KB was killed (runtime_error) while Judge0 truncates; fixed to drain and drop output past the cap. Added a local-runner secrets check. 16/16 local. Committed and pushed to `origin/lane-b-simrit` (code, scripts, tracker).
+- 2026-09-30 S3: added exceptionLine/parsePythonError/annotateError to run.ts. Unit tests 16/16 first time; laneb-run extended with real error-line assertions: 18/18 on Judge0 and local. Typecheck clean. Committed and pushed as P-B3(server)... see git log.
