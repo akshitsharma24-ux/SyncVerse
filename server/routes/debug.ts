@@ -29,6 +29,40 @@ const blocked = new Set<string>(); // `${ownerId}:${granteeId}`
 const streams = new Map<string, Set<Response>>(); // userId -> open SSE responses
 const streamRoom = new Map<Response, string>(); // which room each stream belongs to
 
+// Suggested edits (assist scope): the helper proposes whole-file text, the owner accepts or rejects. Nothing is applied here.
+const MAX_PROPOSAL_CHARS = 30_000;
+const MIN_PROPOSAL_GAP_MS = 2000;
+interface Proposal {
+  id: string;
+  grantId: string;
+  ownerId: string;
+  by: string;
+  note: string;
+  base: string; // the text the helper started from; the owner's editor must still match it to accept
+  source: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'withdrawn';
+  createdAt: number;
+}
+const proposals = new Map<string, Proposal>();
+
+function sendTo(userId: string, event: string, data: unknown): void {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const res of streams.get(userId) ?? []) res.write(payload);
+}
+
+/** The owner's view of a pending suggestion (the only place the suggested text leaves the server). */
+const proposalView = (p: Proposal) => ({ id: p.id, grantId: p.grantId, by: p.by, note: p.note, base: p.base, source: p.source, createdAt: p.createdAt });
+
+/** When access ends, suggestions that were never answered disappear from the owner's screen. */
+function withdrawProposals(grantId: string): void {
+  for (const p of proposals.values()) {
+    if (p.grantId === grantId && p.status === 'pending') {
+      p.status = 'withdrawn';
+      sendTo(p.ownerId, 'proposal-withdrawn', { id: p.id });
+    }
+  }
+}
+
 function expireDue(): void {
   const now = Date.now();
   for (const g of grants.values()) {
@@ -50,6 +84,7 @@ function push(g: Grant): void {
   for (const uid of new Set([g.ownerId, g.granteeId])) {
     for (const res of streams.get(uid) ?? []) res.write(payload);
   }
+  if (g.status !== 'active' && g.status !== 'requested') withdrawProposals(g.id);
 }
 
 function findLive(ownerId: string, granteeId: string): Grant | undefined {
@@ -69,7 +104,11 @@ export function canView(viewerId: string, ownerId: string): boolean {
 
 /** Demo reset (P-D3): forget every grant and block for this room. */
 export function resetDebug(roomCode: string): void {
-  for (const [id, g] of grants) if (g.roomCode === roomCode) grants.delete(id);
+  for (const [id, g] of grants) {
+    if (g.roomCode !== roomCode) continue;
+    grants.delete(id);
+    for (const [pid, p] of proposals) if (p.grantId === id) proposals.delete(pid);
+  }
   blocked.clear();
   requestLog.clear();
 }
@@ -160,6 +199,54 @@ router.post('/debug/:id/highlight', requireUser, (req, res) => {
   const payload = `event: highlight\ndata: ${JSON.stringify({ grantId: g.id, by: g.granteeName, line })}\n\n`;
   for (const r of streams.get(g.ownerId) ?? []) r.write(payload);
   res.json({ ok: true });
+});
+
+/**
+ * Assist scope only: the grantee suggests an edit (whole-file text). It is shown to the owner as a diff; the owner's browser
+ * applies it only after an explicit Accept. One pending suggestion per grant: a new one replaces the old one.
+ */
+router.post('/debug/:id/proposal', requireUser, (req, res) => {
+  const g = grants.get(String(req.params.id));
+  if (!g || g.granteeId !== req.user!.userId) return void res.status(403).json({ error: 'not your grant' });
+  expireDue();
+  if (g.status !== 'active' || g.scope !== 'assist') return void res.status(403).json({ error: 'assist access not granted' });
+  const source = typeof req.body?.source === 'string' ? req.body.source : '';
+  const base = typeof req.body?.base === 'string' ? req.body.base : '';
+  const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 200) : '';
+  if (!source.trim() || source.length > MAX_PROPOSAL_CHARS || base.length > MAX_PROPOSAL_CHARS) {
+    return void res.status(400).json({ error: `send a non-empty source of at most ${MAX_PROPOSAL_CHARS} characters` });
+  }
+  if (source === base) return void res.status(400).json({ error: 'the suggestion is identical to the current code' });
+  const now = Date.now();
+  for (const p of proposals.values()) {
+    if (p.grantId === g.id && now - p.createdAt < MIN_PROPOSAL_GAP_MS) return void res.status(429).json({ error: 'wait a moment before sending another suggestion' });
+  }
+  withdrawProposals(g.id); // replaces any earlier unanswered suggestion
+  const p: Proposal = { id: randomUUID(), grantId: g.id, ownerId: g.ownerId, by: g.granteeName, note, base, source, status: 'pending', createdAt: now };
+  proposals.set(p.id, p);
+  sendTo(g.ownerId, 'proposal', proposalView(p));
+  res.json({ id: p.id });
+});
+
+/** Owner only: accept or reject a pending suggestion. The edit itself is applied by the owner's own editor. */
+router.post('/debug/:id/proposal/:pid/decision', requireUser, (req, res) => {
+  const p = proposals.get(String(req.params.pid));
+  if (!p || p.grantId !== String(req.params.id)) return void res.status(404).json({ error: 'no such suggestion' });
+  if (p.ownerId !== req.user!.userId) return void res.status(403).json({ error: 'only the owner decides' });
+  if (p.status !== 'pending') return void res.status(409).json({ error: `already ${p.status}` });
+  const accepted = req.body?.accepted === true;
+  p.status = accepted ? 'accepted' : 'rejected';
+  const g = grants.get(p.grantId);
+  if (g) sendTo(g.granteeId, 'proposal-result', { id: p.id, accepted, by: req.user!.name });
+  logEvent({ userId: p.ownerId, roomCode: g?.roomCode ?? '', at: Date.now(), type: 'debug_access', category: accepted ? 'proposal_accepted' : 'proposal_rejected', ok: accepted });
+  res.json({ ok: true });
+});
+
+/** Owner only: suggestions still waiting for an answer (restores the review dialog after a page refresh). */
+router.get('/debug/proposals', requireUser, (req, res) => {
+  expireDue();
+  const uid = req.user!.userId;
+  res.json([...proposals.values()].filter((p) => p.ownerId === uid && p.status === 'pending').map(proposalView));
 });
 
 /** Mentor broadcast: one short banner message to everyone else in the room. Status-style, no data attached. */
