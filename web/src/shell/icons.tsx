@@ -56,6 +56,36 @@ const paths: Record<string, ReactNode> = {
     </>
   ),
   moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />,
+  x: <path d="M6 6l12 12M18 6 6 18" />,
+  upload: <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />,
+  download: <path d="M12 4v12M7 11l5 5 5-5M5 20h14" />,
+  history: (
+    <>
+      <path d="M4 12a8 8 0 1 0 2.6-5.9L4 8.5" />
+      <path d="M4 4v4.5h4.5M12 8v4.5l3 1.8" />
+    </>
+  ),
+  signal: <path d="M5 19v-3M10 19v-7M15 19V9M20 19V5" />,
+  user: (
+    <>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M5 20a7 7 0 0 1 14 0" />
+    </>
+  ),
+  mic: (
+    <>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M6 11a6 6 0 0 0 12 0M12 17v4" />
+    </>
+  ),
+  pencil: <path d="M4 20l1-4L16.5 4.5a2 2 0 0 1 3 3L8 19l-4 1z" />,
+  chevron: <path d="m6 9 6 6 6-6" />,
+  eye: (
+    <>
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 16 }: { name: keyof typeof paths; size?: number }) {

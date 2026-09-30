@@ -3,3 +3,4 @@ export * from './types';
 export * from './concepts';
 export * from './samples';
 export * from './fixtures';
+export * from './files';

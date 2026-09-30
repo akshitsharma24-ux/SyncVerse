@@ -169,7 +169,7 @@ await check('keyboard: the first Tab stop is a skip link that jumps to the edito
   await p.waitForFunction(() => document.activeElement?.id === 'tab-progress');
   // the selected tab controls a labelled panel
   const ok = await p.evaluate(() => {
-    const t = document.querySelector('[role="tab"][aria-selected="true"]');
+    const t = document.querySelector('[role="tablist"][aria-label="Tools"] [role="tab"][aria-selected="true"]');
     const panel = document.getElementById(t.getAttribute('aria-controls'));
     return panel?.getAttribute('aria-labelledby') === t.id;
   });

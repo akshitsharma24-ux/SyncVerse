@@ -4,6 +4,7 @@
  *   data-state: 'ok' (everything configured) | 'setup' (API up, something not configured) | 'offline' (API unreachable)
  */
 import { useEffect, useRef, useState } from 'react';
+import { useLowBandwidth } from '../lowbandwidth';
 
 interface Health {
   ok: boolean;
@@ -13,6 +14,7 @@ interface Health {
 type State = 'checking' | 'ok' | 'setup' | 'offline';
 
 const POLL_MS = 4000;
+const POLL_LOW_MS = 20000; // low-bandwidth mode checks less often
 const ROWS: Array<{ key: keyof Health['configured']; label: string; what: string }> = [
   { key: 'judge0', label: 'Code runner', what: 'Run button (Judge0)' },
   { key: 'llm', label: 'AI tutor', what: 'Explain and patch (LLM)' },
@@ -24,6 +26,7 @@ export function StatusChip() {
   const [state, setState] = useState<State>('checking');
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const low = useLowBandwidth();
 
   useEffect(() => {
     let alive = true;
@@ -43,12 +46,12 @@ export function StatusChip() {
       }
     };
     void check();
-    const id = setInterval(check, POLL_MS);
+    const id = setInterval(check, low ? POLL_LOW_MS : POLL_MS);
     return () => {
       alive = false;
       clearInterval(id);
     };
-  }, []);
+  }, [low]);
 
   useEffect(() => {
     if (!open) return;

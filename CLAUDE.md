@@ -33,7 +33,8 @@ If you need a change in someone else's area, ask in the group chat (or add a not
 - Server functions other lanes call (keep the signatures): `logEvent(e)` in `routes/events.ts`, `canView(viewerId, ownerId)` in
   `routes/debug.ts`, `getRun(id)` and `getLatestRunFor(ownerId)` in `routes/run.ts`.
 - Private by default: a run, explanation or trace is readable only by its owner or an active grantee (`canView`).
-- Identity is a trusted header (no login). Prototype only.
+- Identity: a signed-in account (token) or a guest (headers, unproven). `web/src/api.ts` sends the right one plus `x-room`, and the server then applies the role the room recorded (mentor / student / viewer), not the claimed one. `req.user.role` may be `viewer` (read-only: do not let viewers run code). Never read the role from anywhere but `req.user`.
+- The editor holds several files. `useEditor()` always means the OPEN file; `useActiveFile()` gives `{ id, name, language }` (send `language` with a run request; Judge0 ids are in `shared/files.ts`). `useRoom()` gives the room, my role and `canEdit`.
 
 ## Run it
 

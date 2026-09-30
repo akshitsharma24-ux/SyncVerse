@@ -1,12 +1,25 @@
 /**
- * Load Monaco from the local package (works offline) with only the core editor + Python highlighting, and define the
- * 'syncverse' theme (warm paper, ink text, restrained syntax colours). Imported once by editor/index.tsx BEFORE the
- * first editor mounts. Owner: Lane A.
+ * Load Monaco from the local package (works offline) with the core editor and syntax highlighting for the languages in
+ * shared/files.ts, and define the 'syncverse' / 'syncverse-dark' themes (warm paper or charcoal, restrained syntax colours).
+ * Each language's grammar is a separate small chunk that loads only when a file of that language is first opened.
+ * Imported once by editor/index.tsx BEFORE the first editor mounts. Owner: Lane A.
  */
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import 'monaco-editor/esm/vs/basic-languages/python/python.contribution';
+import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution';
+import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution';
+import 'monaco-editor/esm/vs/basic-languages/java/java.contribution';
+import 'monaco-editor/esm/vs/basic-languages/cpp/cpp.contribution'; // registers both 'c' and 'cpp'
+import 'monaco-editor/esm/vs/basic-languages/r/r.contribution';
+import 'monaco-editor/esm/vs/basic-languages/julia/julia.contribution';
+import 'monaco-editor/esm/vs/basic-languages/sql/sql.contribution';
+import 'monaco-editor/esm/vs/basic-languages/shell/shell.contribution';
+import 'monaco-editor/esm/vs/basic-languages/html/html.contribution';
+import 'monaco-editor/esm/vs/basic-languages/css/css.contribution';
+import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
+import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution';
+import 'monaco-editor/esm/vs/basic-languages/xml/xml.contribution';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-import { loader } from '@monaco-editor/react';
 
 self.MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
@@ -71,7 +84,5 @@ monaco.editor.defineTheme('syncverse-dark', {
     'scrollbarSlider.hoverBackground': '#6F6B62AA',
   },
 });
-
-loader.config({ monaco });
 
 export { monaco };

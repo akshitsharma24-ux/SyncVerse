@@ -42,6 +42,21 @@ async function suite(theme) {
   await page.getByRole('button', { name: 'Join a room' }).first().click();
   await audit('entry page, Join mode');
 
+  // Sign-in dialog (both modes) and, after creating a throw-away account, the profile dialog.
+  await page.click('[data-testid="auth-open"]');
+  await audit('sign-in dialog');
+  await page.click('[data-testid="auth-mode-register"]');
+  await audit('create-account dialog');
+  await page.fill('[data-testid="auth-username"]', 'axe' + Math.random().toString(36).slice(2, 8));
+  await page.fill('[data-testid="auth-password"]', 'axe test pass 77');
+  await page.click('[data-testid="auth-submit"]');
+  await page.waitForSelector('[data-testid="profile-open"]');
+  await page.click('[data-testid="profile-open"]');
+  await audit('profile dialog');
+  await page.keyboard.press('Escape');
+  await page.click('[data-testid="profile-open"]');
+  await page.click('[data-testid="profile-signout"]');
+
   await page.goto(`${BASE}/?name=Axe&role=student&room=a11y-${theme}-${Math.random().toString(36).slice(2, 6)}`);
   await page.waitForSelector('.monaco-editor');
   await page.waitForFunction(() => document.body.innerText.includes('live'));
@@ -51,6 +66,24 @@ async function suite(theme) {
   }
   await page.click('[data-testid="status-chip"]');
   await audit('workspace, status popover open');
+  await page.keyboard.press('Escape');
+  await page.click('[data-testid="file-new"]');
+  await audit('workspace, new-file form open');
+  await page.keyboard.press('Escape');
+  await page.click('[data-testid="room-open"]');
+  await audit('room drawer, People');
+  for (const t of ['history', 'settings']) {
+    await page.click(`[data-testid="room-tab-${t}"]`);
+    await audit(`room drawer, ${t}`);
+  }
+  await page.keyboard.press('Escape');
+  await page.click('[data-testid="file-delete"]').catch(() => {}); // disabled with one file: nothing to audit
+  await page.click('[data-testid="file-new"]');
+  await page.fill('[data-testid="file-new-name"]', 'second.py');
+  await page.click('[data-testid="file-new-submit"]');
+  await page.click('[data-testid="file-delete"]');
+  await audit('delete-file confirmation');
+  await page.keyboard.press('Escape');
   await ctx.close();
 }
 

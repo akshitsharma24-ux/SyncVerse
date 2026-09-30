@@ -5,6 +5,7 @@
  * Dev-only test hook: open the app with ?crash=<panel name> (for example ?crash=ai) to force that panel to throw.
  */
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportError } from '../clientlog';
 
 function Bomb({ name }: { name: string }): null {
   if (import.meta.env.DEV && new URLSearchParams(location.search).get('crash') === name) {
@@ -33,6 +34,7 @@ export class PanelBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error(`[panel:${this.props.name}] crashed`, error, info.componentStack);
+    reportError(`panel ${this.props.name} crashed: ${error.message}`, 'PanelBoundary', error.stack);
   }
 
   render() {

@@ -4,8 +4,14 @@ import '@fontsource-variable/geist-mono';
 import './index.css';
 import App from './App';
 import { initTheme } from './theme';
+import { initAuth } from './auth';
+import { initClientLog } from './clientlog';
+import { initLowBandwidth } from './lowbandwidth';
 
 initTheme();
+initLowBandwidth();
+initClientLog();
+void initAuth();
 
 // StrictMode is intentionally OFF: in dev it double-mounts effects, which opens duplicate Monaco / WebSocket /
 // LiveKit connections. Turn it on later if you want, but fix the cleanups first.

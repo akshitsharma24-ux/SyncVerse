@@ -21,6 +21,9 @@
     "e2e:golden": "node scripts/e2e-golden.mjs",
     "e2e:a11y": "node scripts/e2e-a11y.mjs",
     "test:persist": "node scripts/test-persist.mjs",
+    "test:rooms": "node scripts/test-accounts-rooms.mjs",
+    "e2e:rooms": "node scripts/e2e-rooms.mjs",
+    "check:livekit": "node scripts/check-livekit.mjs",
     "e2e:reconnect": "node scripts/e2e-reconnect.mjs"
   },
   "devDependencies": {
