@@ -1,0 +1,23 @@
+{
+  "name": "syncverse",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SyncVerse - collaborative real-time code editor for remote STEM education (overnight prototype)",
+  "workspaces": ["shared", "server", "web"],
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c green,cyan \"npm run dev -w server\" \"npm run dev -w web\"",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "build": "npm run build -w web",
+    "smoke": "node scripts/smoke.mjs",
+    "e2e": "node scripts/e2e-editor.mjs",
+    "e2e:video": "node scripts/e2e-video.mjs",
+    "e2e:entry": "node scripts/e2e-entry.mjs",
+    "test:persist": "node scripts/test-persist.mjs",
+    "e2e:reconnect": "node scripts/e2e-reconnect.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "playwright-core": "^1.55.0"
+  },
+  "engines": { "node": ">=20" }
+}
