@@ -2,7 +2,10 @@
 //   node --import tsx scripts/laneb-analyze.mjs
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import { analyze } from '../server/routes/analyze.ts';
+import express from 'express';
+import { analyze, router as analyzeRouter } from '../server/routes/analyze.ts';
+import { identity } from '../server/identity.ts';
+import { getEvents } from '../server/routes/events.ts';
 
 const results = [];
 const check = async (name, fn) => {
@@ -207,6 +210,41 @@ check('5,000 lines of realistic code are analysed in under 100 ms', () => {
   if (ms > 100) throw new Error(`${ms.toFixed(1)} ms for ${src.split('\n').length} lines`);
   return `${ms.toFixed(1)} ms, ${src.split('\n').length} lines, ${d.length} findings`;
 });
+
+// ---- lint events for the progress page (in-process app, so we can read the event log) -----------------------------------------
+{
+  const app = express();
+  app.use(express.json());
+  app.use(identity);
+  app.use('/api', analyzeRouter);
+  const srv = await new Promise((resolve) => {
+    const x = app.listen(0, () => resolve(x));
+  });
+  const base = `http://localhost:${srv.address().port}/api/analyze`;
+  const send = (body, headers = { 'x-user-id': 'u-lint', 'x-user-name': 'Lin', 'x-role': 'student' }) =>
+    fetch(base, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+  await check('Analyze now (log + roomCode + identity) records ONE lint event; automatic runs record none', async () => {
+    const before = getEvents().length;
+    await send({ source: 'x = eval(input())\n' }); // automatic
+    eq(getEvents().length, before, 'automatic run logs nothing');
+    await send({ source: 'x = eval(input())\n', log: true, roomCode: 'r1' });
+    const ev = getEvents().slice(before);
+    eq(ev.length, 1, 'events');
+    eq([ev[0].type, ev[0].userId, ev[0].roomCode, ev[0].ok], ['lint', 'u-lint', 'r1', false], 'event fields');
+    eq(typeof ev[0].category, 'string', 'category');
+  });
+  await check('lint event: clean code is ok=true; no identity or no roomCode -> no event; response is still the findings', async () => {
+    const before = getEvents().length;
+    const clean = await (await send({ source: 'total = 0\n', log: true, roomCode: 'r1' })).json();
+    eq(clean, [], 'findings');
+    eq(getEvents().slice(before).map((e) => [e.category, e.ok]), [['clean', true]], 'clean event');
+    const mark = getEvents().length;
+    await send({ source: 'x = 1\n', log: true, roomCode: 'r1' }, {});
+    await send({ source: 'x = 1\n', log: true });
+    eq(getEvents().length, mark, 'no extra events');
+  });
+  srv.close();
+}
 
 // ---- the HTTP endpoint ---------------------------------------------------------------------------------------------------------
 const PORT = 4404;

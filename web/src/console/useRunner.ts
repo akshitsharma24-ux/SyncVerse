@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RunResult } from '@syncverse/shared';
 import { api, ApiError } from '../api';
 import { useEditor, useSessionUser, useWorkspace } from '../session';
-import { clearRunMarkers, markRunError } from './markers';
+import { clearRunMarkers, markRunError, revalidateRunMarker } from './markers';
 
 export interface RunInfo {
   runner: 'judge0' | 'local';
@@ -51,6 +51,12 @@ export function useRunner() {
       alive.current = false; // stops any polling loop
       clearRunMarkers(editor);
     };
+  }, [editor]);
+
+  // Keep the error marker honest: drop it once the failing line has been edited or the whole file replaced.
+  useEffect(() => {
+    const t = setInterval(() => revalidateRunMarker(editor), 300);
+    return () => clearInterval(t);
   }, [editor]);
 
   const finish = useCallback(

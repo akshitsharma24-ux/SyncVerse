@@ -12,6 +12,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { Diagnostic } from '@syncverse/shared';
+import { logEvent } from './events';
 
 const MAX_SOURCE_CHARS = 100_000;
 const MAX_FINDINGS = 200;
@@ -357,11 +358,36 @@ export function analyze(source: string): Diagnostic[] {
 
 export const router = Router();
 
+const analyzeBody = z.object({
+  source: z.string().max(MAX_SOURCE_CHARS),
+  // Only the explicit "Analyze now" button sends these: it records one 'lint' learning event for the progress page.
+  log: z.boolean().optional(),
+  roomCode: z.string().trim().min(1).max(64).optional(),
+});
+
 router.post('/analyze', (req, res) => {
-  const parsed = z.object({ source: z.string().max(MAX_SOURCE_CHARS) }).safeParse(req.body);
+  const parsed = analyzeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: 'Send {source: string} (up to 100,000 characters).' });
     return;
   }
-  res.json(analyze(parsed.data.source));
+  const findings = analyze(parsed.data.source);
+  if (parsed.data.log && parsed.data.roomCode && req.user) {
+    try {
+      const counts = new Map<string, number>();
+      for (const f of findings) counts.set(f.category, (counts.get(f.category) ?? 0) + 1);
+      const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+      logEvent({
+        userId: req.user.userId,
+        roomCode: parsed.data.roomCode,
+        at: Date.now(),
+        type: 'lint',
+        category: top ?? 'clean',
+        ok: findings.length === 0,
+      });
+    } catch (e) {
+      console.error('[analyze] logEvent failed:', e instanceof Error ? e.message : e);
+    }
+  }
+  res.json(findings);
 });

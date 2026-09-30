@@ -1,0 +1,145 @@
+/* Lane B (Simrit): quality panel. Tokens only. Red is used only for error-severity findings. */
+.q {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.q-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.q-status {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.q-note {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.q-dims {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.q-dim {
+  border: 1px solid var(--rule-soft);
+  border-radius: 3px;
+  padding: 8px 10px;
+  background: var(--paper-2);
+}
+.q-dim b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 550;
+}
+.q-dim span {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+.q-dim[data-tone='ok'] span {
+  color: var(--ok);
+}
+.q-dim[data-tone='warn'] span {
+  color: var(--warn);
+}
+.q-dim[data-tone='danger'] {
+  border-color: var(--danger);
+}
+.q-dim[data-tone='danger'] span {
+  color: var(--danger);
+}
+.q-group {
+  border: 1px solid var(--rule-soft);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.q-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: 6px 10px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--rule-soft);
+}
+.q-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.q-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.q-list li + li {
+  border-top: 1px solid var(--rule-soft);
+}
+.q-item {
+  display: grid;
+  grid-template-columns: 8px 44px 1fr;
+  gap: 8px;
+  align-items: start;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+.q-item:hover {
+  background: rgba(21, 21, 21, 0.045);
+}
+.q-sev {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.q-item[data-sev='warning'] .q-sev {
+  background: var(--warn);
+}
+.q-item[data-sev='error'] .q-sev {
+  background: var(--danger);
+}
+.q-line {
+  font-size: 11.5px;
+  color: var(--muted);
+  padding-top: 1px;
+}
+.q-msg {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.q-rule {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--soft);
+}
+.q-empty {
+  padding: 14px 12px;
+  border: 1px dashed var(--soft);
+  border-radius: 3px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.q-error {
+  padding: 6px 10px;
+  border: 1px solid var(--warn);
+  border-radius: 3px;
+  font-size: 12.5px;
+  color: var(--warn);
+}

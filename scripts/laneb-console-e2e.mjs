@@ -198,6 +198,30 @@ try {
     eq((await marked(A)).length, 0, 'highlight count');
   });
 
+  await check('replacing the whole file after a failed run clears the highlight and marker (no whole-file red band)', async () => {
+    await sleep(2200);
+    await setCode(A, STARTER);
+    eq(await runAndWait(A), 'runtime_error', 'status');
+    await waitMarked(A);
+    await setCode(A, 'print("brand new file")\n' + '\n'.repeat(30));
+    await waitMarked(A, false); // the highlight must not stretch over the new text
+    await A.waitForFunction(() => document.querySelectorAll('.monaco-editor .squiggly-error').length === 0, null, { timeout: 4000 });
+  });
+
+  await check('editing the failing line removes its marker; editing elsewhere below it keeps it', async () => {
+    await sleep(2200);
+    await setCode(A, STARTER);
+    eq(await runAndWait(A), 'runtime_error', 'status');
+    await waitMarked(A);
+    await setCode(A, STARTER + '# a comment added below the error\n');
+    await sleep(1200);
+    // A whole-file replace must not leave a swollen marker: one squiggle on line 4 only (a stretched one would be 9+ pieces).
+    const pieces = await squiggles(A);
+    if (pieces < 1 || pieces > 2) throw new Error(`expected the marker to survive on one line, found ${pieces} squiggle pieces`);
+    await setCode(A, STARTER.replace('total += nums[i]', 'total += nums[i - 1]'));
+    await A.waitForFunction(() => document.querySelectorAll('.monaco-editor .squiggly-error').length === 0, null, { timeout: 4000 });
+  });
+
   await check('a syntax error is shown as Compile error', async () => {
     await sleep(2200);
     await setCode(A, 'def greet(name)\n    print(name)\n');

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RunResult, RunStatus } from '@syncverse/shared';
 import { useEditor, useSessionUser } from '../session';
 import { useRunner } from './useRunner';
+import { flashLine } from './markers';
 import './console.css';
 
 type Tone = 'ok' | 'danger' | 'warn' | 'muted' | 'ink';
@@ -196,7 +197,7 @@ export function RunPanel() {
               data-tone={viewed.status === 'timeout' || viewed.status === 'memory_limit' ? 'warn' : 'danger'}
               data-clickable={viewed.errorLine !== undefined}
               data-testid="run-error"
-              onClick={() => viewed.errorLine !== undefined && editor.highlightLine(viewed.errorLine)}
+              onClick={() => viewed.errorLine !== undefined && flashLine(editor, viewed.errorLine, 4000)}
             >
               <span>{viewed.errorMessage}</span>
               {viewed.errorLine !== undefined && (
@@ -205,7 +206,7 @@ export function RunPanel() {
                   data-testid="run-error-line"
                   onClick={(e) => {
                     e.stopPropagation();
-                    editor.highlightLine(viewed.errorLine as number);
+                    flashLine(editor, viewed.errorLine as number, 4000);
                   }}
                 >
                   line {viewed.errorLine}
