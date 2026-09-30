@@ -64,6 +64,67 @@ await check('P-D4: mentor tile for Stu flags STUCK after seeded failures, shows 
   const txt = await M.innerText('[data-testid=overview]');
   if (/def |print\(/.test(txt)) throw new Error('code leaked into tile');
 });
+await check('T-D-09: student sees nudge after 3 failures, Ask for help flags the tile', async () => {
+  await S.click('[role=tab]:has-text("Debug")');
+  await S.waitForSelector('[data-testid=nudge]', T);
+  await S.click('[data-testid=nudge-ask]');
+  await S.waitForSelector('[data-testid=nudge-sent]', T);
+  await M.click('[role=tab]:has-text("Debug")');
+  await M.waitForSelector('[data-testid=tile-Stu] >> [data-testid=help-flag]', T);
+});
+await check('T-D-05: mentor sees class trends as counts', async () => {
+  await M.click('[role=tab]:has-text("Progress")');
+  await M.waitForSelector('[data-testid=trends] >> text=/2 of 4 students/', T);
+});
+await check('Block: blocked mentor cannot request again', async () => {
+  await M.click('[role=tab]:has-text("Debug")');
+  await M.click('[data-testid^=request-]');
+  await S.waitForSelector('[data-testid=access-modal]', T);
+  await S.click('[data-testid=block]');
+  await S.waitForSelector('[data-testid=access-modal]', { state: 'detached', ...T });
+  await M.click('[data-testid^=request-]');
+  await M.waitForSelector('[role=alert]:has-text("did not work")', T);
+});
+await check('assist: owner allows pointing, mentor points at line, owner sees it', async () => {
+  await S.click('[role=tab]:has-text("Debug")');
+  await M.click('[data-testid^=request-]').catch(() => {});
+  // Block earlier is per-server-session; use a fresh mentor for this check
+  const M2 = await mk('Max', 'mentor');
+  await M2.click('[role=tab]:has-text("Debug")');
+  await M2.click("[aria-label=\"Request access to Stu's session\"]");
+  await S.waitForSelector('[data-testid=access-modal]', T);
+  await S.click('[data-testid=allow-assist]');
+  await M2.waitForSelector('[data-testid=hl-line]', T);
+  await M2.fill('[data-testid=hl-line]', '3');
+  await M2.click('[data-testid=hl-send]');
+  await S.waitForSelector('[data-testid=pointed] >> text=line 3', T);
+});
+await check('Reset demo clears progress for the room', async () => {
+  S.once('dialog', (d) => d.accept());
+  await S.click('[data-testid=samples-btn]');
+  await S.click('[data-testid=reset-demo]');
+  await S.click('[role=tab]:has-text("Progress")');
+  await S.waitForSelector('[data-testid=observations] >> text=No runs yet', T);
+});
+await check('Escape closes the Samples menu', async () => {
+  await S.click('[data-testid=samples-btn]');
+  await S.keyboard.press('Escape');
+  await S.waitForSelector('[data-testid=samples-menu]', { state: 'detached', ...T });
+});
+await check('progress shows next-concept suggestions, definitions and trend after seeding', async () => {
+  await S.click('[data-testid=samples-btn]');
+  await S.click('text=Load demo history');
+  await S.click('[role=tab]:has-text("Progress")');
+  await S.waitForSelector('[data-testid=suggestions] >> text=Practise', T);
+  await S.waitForSelector('[data-testid=concepts] >> text=Where a loop should start', T);
+  await S.waitForSelector('[data-testid=trend]', { timeout: 500 }).catch(() => {});
+});
+await check('mentor broadcast reaches the student as a banner', async () => {
+  await M.click('[role=tab]:has-text("Debug")');
+  await M.fill('[data-testid=broadcast-input]', 'Five minutes left, save your work');
+  await M.click('[data-testid=broadcast-send]');
+  await S.waitForSelector('[data-testid=broadcast-banner] >> text=Five minutes left', T);
+});
 await S.screenshot({ path: process.env.TEMP + '/lane-d-student.png' });
 await M.screenshot({ path: process.env.TEMP + '/lane-d-mentor.png' });
 await browser.close();

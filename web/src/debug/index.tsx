@@ -7,27 +7,38 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { DebugGrant, RunResult } from '@syncverse/shared';
 import { ApiError, api, eventSourceUrl } from '../api';
-import { useSessionUser, usePresence } from '../session';
+import { useSessionUser, usePresence, useEditor } from '../session';
 import { Icon } from '../shell/icons';
 import { Overview } from './Overview';
+import { Nudge } from './Nudge';
 
+type Grant = DebugGrant & { scope?: 'view' | 'assist' };
 const LIVE = (g: DebugGrant) => g.status === 'requested' || g.status === 'active';
 
-function useGrants(roomCode: string) {
-  const [grants, setGrants] = useState<Record<string, DebugGrant>>({});
-  const merge = useCallback((g: DebugGrant) => setGrants((prev) => ({ ...prev, [g.id]: g })), []);
+function useGrants(roomCode: string, onHighlight: (by: string, line: number) => void, onBroadcast: (from: string, message: string) => void) {
+  const [grants, setGrants] = useState<Record<string, Grant>>({});
+  const merge = useCallback((g: Grant) => setGrants((prev) => ({ ...prev, [g.id]: g })), []);
 
   useEffect(() => {
     let closed = false;
-    api.get<DebugGrant[]>('/api/debug/grants').then((list) => {
+    api.get<Grant[]>('/api/debug/grants').then((list) => {
       if (!closed) setGrants(Object.fromEntries(list.map((g) => [g.id, g])));
     }).catch(() => {});
     const es = new EventSource(eventSourceUrl('/api/debug/events?room=' + encodeURIComponent(roomCode)));
-    es.onmessage = (m) => merge(JSON.parse(m.data) as DebugGrant);
+    es.onmessage = (m) => merge(JSON.parse(m.data) as Grant);
+    es.addEventListener('broadcast', (m) => {
+      const d = JSON.parse((m as MessageEvent).data) as { from: string; message: string };
+      onBroadcast(d.from, d.message);
+    });
+    es.addEventListener('highlight', (m) => {
+      const d = JSON.parse((m as MessageEvent).data) as { by: string; line: number };
+      onHighlight(d.by, d.line);
+    });
     return () => {
       closed = true;
       es.close();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, merge]);
 
   // Expiry is enforced server-side; this just refreshes the screen when the clock passes expiresAt.
@@ -103,7 +114,20 @@ function Overlay({ children }: { children: React.ReactNode }) {
 export function DebugPanel() {
   const me = useSessionUser();
   const people = usePresence().filter((p) => p.userId !== me.userId);
-  const grants = useGrants(me.roomCode);
+  const editor = useEditor();
+  const [pointed, setPointed] = useState<string | null>(null);
+  const [announce, setAnnounce] = useState<{ from: string; message: string } | null>(null);
+  const grants = useGrants(me.roomCode, (by, line) => {
+    editor.highlightLine(line);
+    setPointed(`${by} pointed at line ${line}`);
+    setTimeout(() => {
+      editor.highlightLine(null);
+      setPointed(null);
+    }, 8000);
+  }, (from, message) => {
+    setAnnounce({ from, message });
+    setTimeout(() => setAnnounce(null), 20000);
+  });
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -125,7 +149,10 @@ export function DebugPanel() {
     }
   }
   const request = (ownerId: string) => call('req' + ownerId, () => api.post('/api/debug/request', { ownerId, roomCode: me.roomCode }));
-  const decide = (id: string, allow: boolean) => call(id, () => api.post(`/api/debug/${id}/decision`, { allow }));
+  const decide = (id: string, allow: boolean, scope: 'view' | 'assist' = 'view') => call(id, () => api.post(`/api/debug/${id}/decision`, { allow, scope }));
+  const [line, setLine] = useState('');
+  const highlight = (id: string) => call('hl' + id, () => api.post(`/api/debug/${id}/highlight`, { line: Number(line) }));
+  const block = (id: string) => call(id, () => api.post(`/api/debug/${id}/block`));
   const revoke = (id: string) => call(id, () => api.post(`/api/debug/${id}/revoke`));
 
   return (
@@ -158,7 +185,7 @@ export function DebugPanel() {
               {g ? (
                 <span className="mono" style={{ fontSize: 11 }} data-testid={`grant-state-${p.userId}`}>{g.status === 'active' ? 'access active' : 'waiting for answer'}</span>
               ) : (
-                <button className="btn btn-outline btn-sm" disabled={busy === 'req' + p.userId} onClick={() => request(p.userId)} data-testid={`request-${p.userId}`}>
+                <button className="btn btn-outline btn-sm" aria-label={`Request access to ${p.name}'s session`} disabled={busy === 'req' + p.userId} onClick={() => request(p.userId)} data-testid={`request-${p.userId}`}>
                   Request access
                 </button>
               )}
@@ -167,15 +194,33 @@ export function DebugPanel() {
         })}
       </div>
 
+      {me.role === 'student' && <Nudge roomCode={me.roomCode} />}
+      {pointed && <div role="status" data-testid="pointed" style={{ fontSize: 12.5, border: '1px solid var(--ink)', borderRadius: 4, padding: 8 }}>{pointed}</div>}
       {msg && <div style={{ color: 'var(--danger)', fontSize: 12 }} role="alert">{msg}</div>}
 
       {active.map((g) => (
         <div key={g.id} data-testid="mirror">
           <Mirror ownerId={g.ownerId} ownerName={nameOf(g.ownerId)} />
+          {g.scope === 'assist' && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <input className="input code" style={{ width: 80 }} inputMode="numeric" placeholder="line" aria-label="Line to point at" value={line} onChange={(e) => setLine(e.target.value.replace(/\D/g, ''))} data-testid="hl-line" />
+              <button className="btn btn-outline btn-sm" disabled={!line} onClick={() => highlight(g.id)} data-testid="hl-send">Point at line</button>
+            </div>
+          )}
           <button className="btn btn-outline btn-sm" style={{ marginTop: 6 }} onClick={() => revoke(g.id)}>Stop viewing</button>
         </div>
       ))}
       {mine.some((g) => g.status === 'denied') && <div style={{ fontSize: 12, color: 'var(--muted)' }}>A request was declined.</div>}
+
+      {announce && (
+        <Overlay>
+          <div role="status" aria-live="polite" data-testid="broadcast-banner" className="mono"
+            style={{ position: 'fixed', top: 60, left: '50%', transform: 'translateX(-50%)', zIndex: 58, background: 'var(--ink)', color: 'var(--paper)', borderRadius: 4, padding: '10px 14px', fontSize: 13, display: 'flex', gap: 12, alignItems: 'center', maxWidth: '90vw' }}>
+            <span><b>{announce.from}:</b> {announce.message}</span>
+            <button className="btn btn-sm" style={{ background: 'var(--paper)', color: 'var(--ink)' }} onClick={() => setAnnounce(null)} aria-label="Dismiss message">OK</button>
+          </div>
+        </Overlay>
+      )}
 
       {incoming.length > 0 && (
         <Overlay>
@@ -187,8 +232,10 @@ export function DebugPanel() {
                 <b>{incoming[0].granteeName}</b> wants to see your latest run and error. They cannot edit your code. You can revoke at any time.
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn" onClick={() => decide(incoming[0].id, true)} data-testid="allow">Allow</button>
+                <button className="btn" autoFocus onClick={() => decide(incoming[0].id, true)} data-testid="allow" title="They can see your latest run, nothing else">Allow view only</button>
+                <button className="btn btn-outline" onClick={() => decide(incoming[0].id, true, 'assist')} data-testid="allow-assist" title="They can also point at a line in your editor">Allow + point at lines</button>
                 <button className="btn btn-outline" onClick={() => decide(incoming[0].id, false)} data-testid="deny">Deny</button>
+                <button className="btn btn-outline" onClick={() => block(incoming[0].id)} data-testid="block" title="Deny and stop further requests from this person">Block</button>
               </div>
             </div>
           </div>
@@ -199,7 +246,7 @@ export function DebugPanel() {
         <Overlay>
           <div style={{ position: 'fixed', left: '50%', bottom: 14, transform: 'translateX(-50%)', zIndex: 55, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {viewing.map((g) => (
-              <div key={g.id} data-testid="viewing-banner" className="mono"
+              <div key={g.id} role="status" aria-live="polite" data-testid="viewing-banner" className="mono"
                 style={{ background: 'var(--ink)', color: 'var(--paper)', borderRadius: 4, padding: '8px 12px', fontSize: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
                 <span>{g.granteeName} is viewing your session</span>
                 <button className="btn btn-sm" style={{ background: 'var(--paper)', color: 'var(--ink)' }} onClick={() => revoke(g.id)} data-testid="revoke">Revoke</button>

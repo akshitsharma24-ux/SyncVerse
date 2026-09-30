@@ -24,10 +24,27 @@ export function SamplesMenu() {
 
   useEffect(() => {
     if (!open) return;
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('keydown', esc);
     const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', esc);
+    };
   }, [open]);
+
+  async function reset() {
+    if (!window.confirm('Reset the demo? This clears progress history, debug access and help flags for this room.')) return;
+    try {
+      await api.post('/api/demo/reset', { roomCode: me.roomCode });
+      setNote('Demo reset');
+    } catch {
+      setNote('Could not reset');
+    }
+    setOpen(false);
+    setTimeout(() => setNote(''), 2500);
+  }
 
   async function seed() {
     try {
@@ -60,6 +77,9 @@ export function SamplesMenu() {
           <hr style={{ border: 0, borderTop: '1px solid var(--rule-soft)', margin: '4px 0' }} />
           <button role="menuitem" className="btn btn-outline btn-sm btn-block" style={{ justifyContent: 'flex-start', border: 0 }} onClick={seed}>
             Load demo history
+          </button>
+          <button role="menuitem" className="btn btn-outline btn-sm btn-block" style={{ justifyContent: 'flex-start', border: 0 }} onClick={reset} data-testid="reset-demo">
+            Reset demo
           </button>
         </div>
       )}

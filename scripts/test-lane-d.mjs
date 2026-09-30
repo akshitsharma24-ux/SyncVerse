@@ -31,5 +31,38 @@ try {
   ok('students 403 on room table', (await call('GET', '/progress/room?room=r', S)).s === 403);
   r = await call('GET', '/progress/room?room=r', M);
   ok('mentor table has stuck Asha', r.j.rows.some(x => x.name.startsWith('Asha') && x.stuck));
+  r = await call('POST', '/debug/request', H('m3', 'Mo', 'mentor'), { ownerId: 's1', roomCode: 'r' });
+  await call('POST', `/debug/${r.j.id}/block`, S);
+  ok('blocked requester gets 403', (await call('POST', '/debug/request', H('m3', 'Mo', 'mentor'), { ownerId: 's1', roomCode: 'r' })).s === 403);
+  await call('POST', '/help', S, { roomCode: 'r' });
+  r = await call('GET', '/progress/room?room=r', M);
+  ok('help flag on mentor row', r.j.rows.some((x) => x.userId === 's1' && x.helpRequested));
+  r = await call('GET', '/progress/trends?room=r', M);
+  ok('trends: Asha struggled with loop boundaries', r.j.trends.some((t) => t.concept === 'loop boundaries' && t.struggling >= 1));
+  ok('students 403 on trends', (await call('GET', '/progress/trends?room=r', S)).s === 403);
+  // assist scope: highlight only with assist; view-only is refused
+  const P = H('p1', 'Pat', 'student'), Q = H('q1', 'Quin', 'mentor');
+  r = await call('POST', '/debug/request', Q, { ownerId: 'p1', roomCode: 'r' });
+  const gid = r.j.id;
+  await call('POST', `/debug/${gid}/decision`, P, { allow: true });
+  ok('view-only grant refuses highlight', (await call('POST', `/debug/${gid}/highlight`, Q, { line: 3 })).s === 403);
+  await call('POST', `/debug/${gid}/revoke`, P);
+  r = await call('POST', '/debug/request', Q, { ownerId: 'p1', roomCode: 'r' });
+  r = await call('POST', `/debug/${r.j.id}/decision`, P, { allow: true, scope: 'assist' });
+  ok('assist scope reported', r.j.scope === 'assist');
+  ok('assist grantee can highlight', (await call('POST', `/debug/${r.j.id}/highlight`, Q, { line: 3 })).j?.ok === true);
+  ok('bad line rejected', (await call('POST', `/debug/${r.j.id}/highlight`, Q, { line: -1 })).s === 400);
+  // leaving ends access: open the owner's SSE, close it, wait for the 20 s grace
+  const ac = new AbortController();
+  await fetch(B + '/debug/events?room=r', { headers: P, signal: ac.signal }).catch(() => {});
+  ac.abort();
+  await new Promise((res) => setTimeout(res, 22000));
+  ok('owner leaving revokes the grant', (await call('GET', '/debug/grants', Q)).j.find((g) => g.id === r.j.id)?.status === 'revoked');
+  await call('POST', '/demo/reset', S, { roomCode: 'r' });
+  ok('reset clears events', (await call('GET', '/progress/me?room=r', S)).j.runs === 0);
+  r = await call('GET', '/progress/me?room=r', S);
+  ok('summary has suggestions, definitions, trend', Array.isArray(r.j.suggestions) && r.j.conceptDefs.every((c) => c.definition) && Array.isArray(r.j.trend));
+  ok('students cannot broadcast', (await call('POST', '/broadcast', S, { roomCode: 'r', message: 'hi' })).s === 403);
+  ok('mentor broadcast validates input', (await call('POST', '/broadcast', M, { roomCode: 'r', message: '' })).s === 400);
 } finally { srv.kill(); spawn('taskkill', ['/pid', String(srv.pid), '/T', '/F'], { shell: true }); }
 console.log(fails ? 'FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

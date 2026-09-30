@@ -9,10 +9,12 @@
 import { Router } from 'express';
 import type { LearningEvent } from '@syncverse/shared';
 import { requireUser } from '../identity';
+import { resetDebug } from './debug';
 
 let events: LearningEvent[] = [];
 const names = new Map<string, string>(); // userId -> display name
 const rooms = new Map<string, string>(); // userId -> last room
+const helpAsked = new Set<string>(); // students who chose "Ask for help" (T-D-09)
 
 /** Every lane calls this when something learning-relevant happens (run finished, explain asked, patch decided...). */
 export function logEvent(e: LearningEvent): void {
@@ -37,6 +39,8 @@ const CATEGORY_RULES: { match: RegExp; label: string; concepts: string[] }[] = [
   { match: /syntax|indentation|compile/i, label: 'SyntaxError', concepts: ['syntax-basics'] },
   { match: /recursion/i, label: 'RecursionError', concepts: ['recursion'] },
   { match: /timeout|time.?limit/i, label: 'Timeout', concepts: ['loops'] },
+  { match: /zerodivision/i, label: 'ZeroDivisionError', concepts: ['exceptions-errors'] },
+  { match: /type/i, label: 'TypeError', concepts: ['variables-types'] },
 ];
 
 function classify(category?: string): { label: string; concepts: string[] } | undefined {
@@ -55,6 +59,18 @@ const CONCEPT_NAMES: Record<string, string> = {
 };
 const conceptName = (c: string) => CONCEPT_NAMES[c] ?? c.replace(/-/g, ' ');
 
+/** One-line plain definitions (blueprint Appendix C wording), keyed by display name. */
+const DEFINITIONS: Record<string, string> = {
+  'lists and arrays': 'A list keeps items in order; the first item is at position 0, so a list of 3 ends at position 2.',
+  'loop boundaries': 'Where a loop should start and stop. Off-by-one mistakes run it one step too far or too short.',
+  variables: 'A name that holds a value. Using a name before you create it, or misspelling it, is an error.',
+  'syntax basics': 'The punctuation rules of the language: colons, brackets, quotes and indentation.',
+  recursion: 'A function that calls itself. It needs a base case that stops the calls.',
+  loops: 'Repeating steps with for or while. A loop needs something that eventually ends it.',
+  'exceptions errors': 'Errors raised while a program runs, and how to read and handle them.',
+};
+const definitionOf = (name: string) => DEFINITIONS[name] ?? 'A programming idea that came up in your errors.';
+
 // ------------------------------------------------------------------------------------ aggregates
 export interface ProgressSummary {
   userId: string;
@@ -67,6 +83,9 @@ export interface ProgressSummary {
   patchesAccepted: number;
   patchesRejected: number;
   concepts: string[];
+  conceptDefs: { name: string; definition: string }[];
+  suggestions: string[]; // what to practise next
+  trend: { label: string; pct: number }[]; // success rate per block of 5 runs, oldest first
   streak: number; // failed runs in a row, latest first
   observations: string[];
   recent: { at: number; ok: boolean; label?: string }[]; // oldest -> newest, last 10 runs
@@ -119,6 +138,23 @@ function summarize(userId: string, all: readonly LearningEvent[]): ProgressSumma
   if (runEvents.length === 0) observations.push('No runs yet. Run your code to start building a picture.');
 
   const successes = runEvents.filter((e) => e.ok).length;
+  const conceptNames = [...conceptSet].map(conceptName);
+  // Next concepts: the ones behind the most failed runs (2+), most frequent first.
+  const failCount = new Map<string, number>();
+  for (const e of runEvents) {
+    if (e.ok) continue;
+    for (const c of classify(e.category)?.concepts ?? []) failCount.set(c, (failCount.get(c) ?? 0) + 1);
+  }
+  const suggestions = [...failCount]
+    .filter(([, n]) => n >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([c]) => `Practise ${conceptName(c)}: write a tiny program that uses it on purpose and check the output.`);
+  const trend: { label: string; pct: number }[] = [];
+  for (let i = 0; i < runEvents.length; i += 5) {
+    const block = runEvents.slice(i, i + 5);
+    trend.push({ label: `runs ${i + 1}-${i + block.length}`, pct: Math.round((block.filter((e) => e.ok).length / block.length) * 100) });
+  }
   return {
     userId,
     runs: runEvents.length,
@@ -129,7 +165,10 @@ function summarize(userId: string, all: readonly LearningEvent[]): ProgressSumma
     aiExplains: explains,
     patchesAccepted: acc,
     patchesRejected: rej,
-    concepts: [...conceptSet].map(conceptName),
+    concepts: conceptNames,
+    conceptDefs: conceptNames.map((name) => ({ name, definition: definitionOf(name) })),
+    suggestions,
+    trend: trend.slice(-4),
     streak,
     observations,
     recent: last10.map((e) => ({ at: e.at, ok: !!e.ok, label: e.ok ? undefined : classify(e.category)?.label })),
@@ -146,6 +185,7 @@ export interface RoomRow {
   stuck: boolean;
   lastRun: 'ok' | 'failed' | null;
   lastError: string | null;
+  helpRequested: boolean;
 }
 
 // ----------------------------------------------------------------------------------------- routes
@@ -174,10 +214,41 @@ router.get('/progress/room', requireUser, (req, res) => {
       streak: s.streak,
       stuck: s.streak >= 3,
       lastRun: s.recent.length ? (s.recent[s.recent.length - 1].ok ? 'ok' : 'failed') : null,
+      helpRequested: helpAsked.has(id),
       lastError: s.recent.length ? s.recent[s.recent.length - 1].label ?? null : null,
     };
   });
   res.json({ room, rows });
+});
+
+router.post('/help', requireUser, (req, res) => {
+  const me = req.user!;
+  rememberUser(me.userId, me.name, typeof req.body?.roomCode === 'string' ? req.body.roomCode : undefined);
+  helpAsked.add(me.userId);
+  res.json({ ok: true });
+});
+
+/** T-D-05: how many students struggled with each concept (2+ failed runs mapped to it). Counts, not names. */
+router.get('/progress/trends', requireUser, (req, res) => {
+  const me = req.user!;
+  if (me.role !== 'mentor') return void res.status(403).json({ error: 'mentors only' });
+  const room = typeof req.query.room === 'string' ? req.query.room : rooms.get(me.userId);
+  const inRoom = events.filter((e) => e.roomCode === room && e.type === 'run' && e.userId !== me.userId);
+  const students = new Set(inRoom.map((e) => e.userId));
+  const struggling = new Map<string, Map<string, number>>();
+  for (const e of inRoom) {
+    if (e.ok) continue;
+    for (const c of classify(e.category)?.concepts ?? []) {
+      const m = struggling.get(c) ?? new Map<string, number>();
+      m.set(e.userId, (m.get(e.userId) ?? 0) + 1);
+      struggling.set(c, m);
+    }
+  }
+  const trends = [...struggling]
+    .map(([c, m]) => ({ concept: conceptName(c), struggling: [...m.values()].filter((n) => n >= 2).length, total: students.size }))
+    .filter((t) => t.struggling > 0)
+    .sort((a, b) => b.struggling - a.struggling);
+  res.json({ students: students.size, trends });
 });
 
 // ------------------------------------------------------------------------------------- demo seed
@@ -219,5 +290,8 @@ router.post('/demo/seed', requireUser, (req, res) => {
 router.post('/demo/reset', requireUser, (req, res) => {
   const roomCode = typeof req.body?.roomCode === 'string' ? req.body.roomCode : '';
   events = events.filter((e) => e.roomCode !== roomCode);
+  for (const id of PERSONAS.map((p) => p.id)) helpAsked.delete(id);
+  helpAsked.clear();
+  resetDebug(roomCode);
   res.json({ ok: true });
 });
