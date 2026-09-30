@@ -2,6 +2,7 @@
 // Without LiveKit keys in .env it verifies the friendly "not configured" path; with keys it also checks the call UI mounts.
 // Real media between two people can only be checked by hand on two devices (headless browsers have no camera).
 import { chromium } from 'playwright-core';
+import { openTool } from './lib/tools.mjs';
 
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173';
 const health = await (await fetch((process.env.SMOKE_BASE ?? 'http://localhost:4000') + '/api/health')).json();
@@ -22,7 +23,7 @@ await page.goto(`${BASE}/?name=Akshit&role=student&room=e2e-video`);
 await page.waitForSelector('.monaco-editor', { timeout: 20000 });
 
 await check('Video tab shows the Join call button (no auto-connect)', async () => {
-  await page.getByRole('tab', { name: 'Video', exact: true }).click();
+  await openTool(page, 'Video');
   await page.waitForSelector('[data-testid="video-join"]', { timeout: 4000 });
   if (await page.$('[data-testid="video-live"]')) throw new Error('connected without a click');
 });

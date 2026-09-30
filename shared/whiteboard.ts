@@ -9,6 +9,8 @@
  *
  * Coordinates are in board units on a fixed 1600 x 900 page, so every screen shows the same drawing at a different scale.
  * Anyone in the room can write anything into the array, so the reader must call sanitizeShape() before drawing a shape.
+ * Colours are plain #rrggbb values. The palette a frontend offers (and the page colour) is that frontend's own choice;
+ * BOARD_COLORS below is the palette for a light page.
  */
 
 export const BOARD_ARRAY = 'board';
@@ -64,9 +66,9 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 
 /**
  * Returns a safe copy of anything read from the shared document or from awareness, or null when it is not a usable shape.
- * Numbers are clamped to the page, the colour must be a plain hex value, text is cut to MAX_TEXT_CHARS.
+ * Numbers are clamped to the page, the colour must be a plain hex value (else fallbackColor), text is cut to MAX_TEXT_CHARS.
  */
-export function sanitizeShape(v: unknown): BoardShape | null {
+export function sanitizeShape(v: unknown, fallbackColor: string = BOARD_COLORS[0].hex): BoardShape | null {
   if (!v || typeof v !== 'object') return null;
   const s = v as Record<string, unknown>;
   if (typeof s.tool !== 'string' || !(SHAPE_TOOLS as readonly string[]).includes(s.tool)) return null;
@@ -85,7 +87,7 @@ export function sanitizeShape(v: unknown): BoardShape | null {
     id: typeof s.id === 'string' ? s.id.slice(0, 24) : '',
     by: typeof s.by === 'string' ? s.by.slice(0, 64) : '',
     tool,
-    color: typeof s.color === 'string' && COLOR_RE.test(s.color) ? s.color : BOARD_COLORS[0].hex,
+    color: typeof s.color === 'string' && COLOR_RE.test(s.color) ? s.color : fallbackColor,
     size: typeof s.size === 'number' && Number.isFinite(s.size) ? clamp(s.size, 1, 24) : 6,
     pts,
     ...(text !== undefined ? { text } : {}),

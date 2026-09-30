@@ -1,6 +1,7 @@
 // Browser checks for the multi-file editor, roles and moderation, version history, low-bandwidth mode and accounts.
 // Needs the dev servers running:  npm run dev   then   npm run e2e:rooms
 import { chromium } from 'playwright-core';
+import { openTool } from './lib/tools.mjs';
 
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173';
 const results = [];
@@ -34,6 +35,11 @@ const names = (p) => p.evaluate(() => window.__sv.files.list().map((f) => f.name
 const active = (p) => p.evaluate(() => window.__sv.files.list().find((f) => f.id === window.__sv.files.activeId())?.name);
 const lang = (p) => p.evaluate(() => window.__sv.files.activeLanguage());
 const text = (p) => p.evaluate(() => window.__sv.editor.getValue());
+// Version history is a button in the sidebar, which starts collapsed in the Quiet Studio shell.
+const openHistory = async (p) => {
+  if (!(await p.locator('[data-testid="history-open"]').isVisible())) await p.getByRole('button', { name: 'Show sidebar', exact: true }).click();
+  await p.click('[data-testid="history-open"]');
+};
 const tab = (p, name) => p.locator(`[data-testid="file-tab"][data-file="${name}"]`);
 async function newFile(p, name, language) {
   await p.click('[data-testid="file-new"]');
@@ -229,14 +235,14 @@ await check('History: save a named version, change the code, preview the old one
   await tab(sam, 'main.py').click();
   await olive.evaluate(() => window.__sv.editor.replaceAll('x = "version A"\n'));
   await sam.waitForFunction(() => window.__sv.editor.getValue().includes('version A'));
-  await olive.click('[data-testid="history-open"]');
+  await openHistory(olive);
   await olive.fill('[data-testid="version-label"]', 'Checkpoint A');
   await olive.click('[data-testid="version-save"]');
   await olive.waitForSelector('[data-testid="version-row"][data-label="Checkpoint A"]');
   await olive.keyboard.press('Escape');
   await olive.evaluate(() => window.__sv.editor.replaceAll('x = "version B"\n'));
   await sam.waitForFunction(() => window.__sv.editor.getValue().includes('version B'));
-  await olive.click('[data-testid="history-open"]');
+  await openHistory(olive);
   const row = olive.locator('[data-testid="version-row"][data-label="Checkpoint A"]');
   await row.locator('[data-testid="version-preview"]').click();
   if (!(await olive.textContent('[data-testid="version-preview-body"] pre')).includes('version A')) throw new Error('preview shows the wrong text');
@@ -248,7 +254,7 @@ await check('History: save a named version, change the code, preview the old one
   await olive.keyboard.press('Escape');
 });
 await check('a restore also brings back a deleted file', async () => {
-  await olive.click('[data-testid="history-open"]');
+  await openHistory(olive);
   await olive.fill('[data-testid="version-label"]', 'With sum.c');
   await olive.click('[data-testid="version-save"]');
   await olive.waitForSelector('[data-testid="version-row"][data-label="With sum.c"]');
@@ -257,7 +263,7 @@ await check('a restore also brings back a deleted file', async () => {
   await olive.click('[data-testid="file-delete"]');
   await olive.click('[data-testid="file-delete-confirm"]');
   await sam.waitForFunction(() => !window.__sv.files.list().some((f) => f.name === 'sum.c'));
-  await olive.click('[data-testid="history-open"]');
+  await openHistory(olive);
   const row = olive.locator('[data-testid="version-row"][data-label="With sum.c"]');
   await row.locator('[data-testid="version-restore"]').click();
   await row.locator('[data-testid="version-restore-confirm"]').click();
@@ -277,7 +283,7 @@ await check('low-bandwidth mode: switch it on in Settings; it is remembered and 
   await sam.check('[data-testid="lowbw-toggle"]');
   if ((await sam.getAttribute('html', 'data-lowbw')) !== 'on') throw new Error('data-lowbw not set');
   await sam.keyboard.press('Escape');
-  await sam.getByRole('tab', { name: 'Video', exact: true }).click();
+  await openTool(sam, 'Video');
   if (!/audio only/.test(await sam.textContent('#panel-video'))) throw new Error('the Video tab does not say audio only');
   const health = await (await fetch((process.env.SMOKE_BASE ?? 'http://localhost:4000') + '/api/health')).json();
   if (health.configured?.livekit) {
@@ -289,14 +295,15 @@ await check('low-bandwidth mode: switch it on in Settings; it is remembered and 
   await sam.waitForSelector('.monaco-editor', { timeout: 25000 });
   if ((await sam.getAttribute('html', 'data-lowbw')) !== 'on') throw new Error('not remembered after reload');
 });
-await check('low-bandwidth mode hides the animated demo on the entry page and can be switched off there', async () => {
+await check('low-bandwidth mode stills the decorative animation on the entry page', async () => {
   const p = await newPage({ storageState: undefined });
   await p.addInitScript(() => localStorage.setItem('sv.lowbw', 'on'));
   await p.goto(BASE);
-  await p.waitForSelector('[data-testid="lowbw-note"]');
-  if (await p.locator('.ide').count()) throw new Error('the live demo is still there');
-  await p.click('[data-testid="lowbw-toggle-entry"]');
-  await p.waitForSelector('.ide');
+  await p.waitForSelector('.orbit-one');
+  if ((await p.getAttribute('html', 'data-lowbw')) !== 'on') throw new Error('low-bandwidth mode is not applied to the page');
+  const name = await p.evaluate(() => getComputedStyle(document.querySelector('.orbit-one')).animationName);
+  await p.context().close();
+  if (name !== 'none') throw new Error('the orbit still animates: ' + name);
 });
 await check('low-bandwidth mode sends my cursor at most every 0.7 s', async () => {
   const a = await join('Lowa', 'student', 'lb-' + uniq());
@@ -360,9 +367,11 @@ await check('create an account: the header shows you, your name is locked to the
   await acc.click('[data-testid="auth-submit"]');
   await acc.waitForSelector('[data-testid="profile-open"]');
   if (!(await acc.textContent('[data-testid="profile-open"]')).includes('Ada Tester')) throw new Error('name missing in the header');
+  await acc.click('[data-testid="hero-create"]');
   if ((await acc.inputValue('[data-testid="entry-name"]')) !== 'Ada Tester' || !(await acc.getAttribute('[data-testid="entry-name"]', 'readonly') !== null)) throw new Error('name field is not locked to the profile');
   await acc.reload();
   await acc.waitForSelector('[data-testid="profile-open"]', { timeout: 8000 });
+  await acc.click('[data-testid="hero-create"]'); // the next check creates a room from this dialog
 });
 const acct = { room: 'ac-' + uniq() };
 await check('a signed-in person creates a room, is its owner under their account id, and finds it in "Your rooms" on any tab', async () => {
@@ -375,6 +384,7 @@ await check('a signed-in person creates a room, is its owner under their account
   // another tab of the same browser: same account, sees the room in the list
   const other = await acc.context().newPage();
   await other.goto(BASE);
+  await other.click('[data-testid="hero-create"]');
   await other.waitForSelector('[data-testid="room-list"]', { timeout: 8000 });
   if (!(await other.textContent('[data-testid="room-list"]')).includes(acct.room)) throw new Error('room not listed');
   await other.close();
@@ -388,9 +398,11 @@ await check('editing the profile changes the name everywhere; signing out return
   await acc.waitForFunction(() => document.querySelector('[data-testid="profile-open"]').textContent.includes('Ada L.'));
   await acc.click('[data-testid="profile-signout"]');
   await acc.waitForSelector('[data-testid="auth-open"]');
+  await acc.click('[data-testid="hero-create"]');
   if ((await acc.inputValue('[data-testid="entry-name"]')) === 'Ada L.' && (await acc.getAttribute('[data-testid="entry-name"]', 'readonly')) !== null) throw new Error('still locked after sign-out');
 });
 await check('signing in again with the wrong password says so; the right one works and the profile kept the new name', async () => {
+  await acc.keyboard.press('Escape'); // close the entry dialog left open by the previous check
   await acc.click('[data-testid="auth-open"]');
   await acc.fill('[data-testid="auth-username"]', uname);
   await acc.fill('[data-testid="auth-password"]', 'wrong wrong wrong');

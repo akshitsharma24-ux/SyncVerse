@@ -1,8 +1,9 @@
-// Accessibility check with axe-core (WCAG 2.0/2.1 A + AA) on the entry page and every workspace tab, in BOTH themes.
+// Accessibility check with axe-core (WCAG 2.0/2.1 A + AA) on the entry page and every workspace screen of the dark Quiet Studio frontend.
 // Needs the dev servers running:  npm run dev   then   npm run e2e:a11y
 // Fails on serious/critical violations; moderate/minor ones are listed but do not fail. Monaco's internals are excluded.
 import { createRequire } from 'node:module';
 import { chromium } from 'playwright-core';
+import { openTool } from './lib/tools.mjs';
 
 const require = createRequire(import.meta.url);
 const axePath = require.resolve('axe-core/axe.min.js');
@@ -14,8 +15,6 @@ let failing = 0;
 
 async function suite(theme) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', colorScheme: theme });
-  // Pin the theme the way a user's saved choice would, so the test does not depend on the OS setting.
-  await ctx.addInitScript((t) => localStorage.setItem('sv.theme', t), theme);
   const page = await ctx.newPage();
 
   async function audit(label) {
@@ -35,12 +34,18 @@ async function suite(theme) {
   }
 
   await page.goto(BASE);
-  await page.waitForSelector('h1.headline');
+  await page.waitForSelector('[data-testid="hero-create"]');
   const applied = await page.getAttribute('html', 'data-theme');
   if (applied !== theme) throw new Error(`expected data-theme=${theme}, page has ${applied}`);
-  await audit('entry page, Create mode');
-  await page.getByRole('button', { name: 'Join a room' }).first().click();
-  await audit('entry page, Join mode');
+  await page.evaluate(() => document.querySelectorAll('.reveal').forEach((el) => el.classList.add('revealed'))); // scroll-reveal sections
+  await page.waitForTimeout(500);
+  await audit('landing page');
+  await page.click('[data-testid="hero-create"]');
+  await audit('entry dialog, Create mode');
+  await page.keyboard.press('Escape');
+  await page.click('[data-testid="hero-join"]');
+  await audit('entry dialog, Join mode');
+  await page.keyboard.press('Escape');
 
   // Sign-in dialog (both modes) and, after creating a throw-away account, the profile dialog.
   await page.click('[data-testid="auth-open"]');
@@ -61,12 +66,15 @@ async function suite(theme) {
   await page.waitForSelector('.monaco-editor');
   await page.waitForFunction(() => document.body.innerText.includes('live'));
   for (const tab of ['Video', 'AI', 'Quality', 'Debug', 'Progress', 'Board']) {
-    await page.getByRole('tab', { name: tab, exact: true }).click();
+    await openTool(page, tab);
     await audit(`workspace, ${tab} tab`);
   }
-  await page.click('[data-testid="board-expand"]'); // the Board tab is open now
+  await page.click('[data-testid="board-expand"]'); // the Whiteboard tool is open now
   await audit('whiteboard, large view');
   await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Show sidebar', exact: true }).click();
+  await audit('workspace, sidebar open');
+  await page.getByRole('button', { name: 'Hide sidebar', exact: true }).click();
   await page.click('[data-testid="status-chip"]');
   await audit('workspace, status popover open');
   await page.keyboard.press('Escape');
@@ -90,8 +98,7 @@ async function suite(theme) {
   await ctx.close();
 }
 
-await suite('light');
-await suite('dark');
+await suite('dark'); // Quiet Studio has one theme
 
 await browser.close();
 process.exit(failing ? 1 : 0);

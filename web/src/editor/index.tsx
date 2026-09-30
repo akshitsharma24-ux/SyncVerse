@@ -29,6 +29,7 @@ import {
   type Role,
 } from '@syncverse/shared';
 import { identityParams } from '../api';
+import { setCollab } from '../collab';
 import { useLowBandwidth } from '../lowbandwidth';
 import { useRoom } from '../room';
 import { useActiveFileSetter, useEditorRegistry, usePresence, usePresenceSetter, useSessionUser } from '../session';
@@ -133,6 +134,11 @@ export function EditorPanel() {
       automaticLayout: true,
       renderLineHighlight: 'line',
       ariaLabel: 'Shared code editor',
+      // Completion like VS Code: type a prefix (Java: sout) and press Tab while the list is open. Enter stays a plain new line,
+      // so finishing a word and pressing Enter never inserts a snippet by accident.
+      snippetSuggestions: 'top',
+      acceptSuggestionOnEnter: 'off',
+      quickSuggestions: { other: true, comments: false, strings: false },
       readOnly: !canEditRef.current,
       // Respect "reduce motion": no animated scrolling or caret glide.
       smoothScrolling: !reduceMotion,
@@ -145,6 +151,7 @@ export function EditorPanel() {
     const provider = new WebsocketProvider(collabUrl(), me.roomCode, doc, { params: identityParams() });
     providerRef.current = provider;
     const awareness = provider.awareness;
+    setCollab({ doc, awareness }); // the whiteboard draws into this same document and connection
 
     // Low-bandwidth mode: send my cursor position at most every 0.7 s instead of on every key press.
     const setField = awareness.setLocalStateField.bind(awareness);
@@ -443,11 +450,13 @@ export function EditorPanel() {
     if (import.meta.env.DEV) {
       (window as unknown as { __sv?: unknown }).__sv = {
         editor: handle,
+        collab: { doc, awareness }, // for tests that write raw data (whiteboard validation, viewer write rules)
         files: { ...ops, list: () => sortedFiles(meta), activeId: () => active, activeLanguage: () => editor.getModel()?.getLanguageId(), readOnly: () => editor.getOption(monaco.editor.EditorOption.readOnly) },
       };
     }
 
     cleanupRef.current = () => {
+      setCollab(null);
       clearInterval(tick);
       if (selectionTimer !== null) clearTimeout(selectionTimer);
       meta.unobserve(onFilesChanged);

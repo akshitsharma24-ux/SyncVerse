@@ -3,6 +3,7 @@
 //   npm run e2e:golden -- --strict  demo morning: SKIP counts as a failure
 // Contract for the UI hooks: docs/TESTIDS.md.   Owner: Lane A.
 import { chromium } from 'playwright-core';
+import { openTool } from './lib/tools.mjs';
 import { tsImport } from 'tsx/esm/api';
 
 const { SAMPLE_BY_ID } = await tsImport('../shared/samples.ts', import.meta.url);
@@ -59,7 +60,7 @@ const needPanel = async (p, id, label) => {
   if (!(await exists(p, id))) throw new Skip(`not built yet (no ${id} on the page): ${label}`);
 };
 async function tab(p, name) {
-  await p.getByRole('tab', { name, exact: true }).click();
+  await openTool(p, name);
 }
 async function apiStatus(path, who) {
   const res = await fetch(API + path, { headers: { 'x-user-id': await uid(who), 'x-user-name': await uname(who), 'x-role': who === asha ? 'mentor' : 'student' } });

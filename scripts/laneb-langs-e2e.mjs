@@ -2,6 +2,7 @@
 // stepping aside for non-Python code. Needs the dev servers running:  npm run dev     (and internet for Judge0)
 //   node scripts/laneb-langs-e2e.mjs        (E2E_SHOTS=<dir> saves a screenshot)
 import { chromium } from 'playwright-core';
+import { openTool } from './lib/tools.mjs';
 
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173';
 const SHOTS = process.env.E2E_SHOTS;
@@ -106,7 +107,7 @@ await check('C: a segmentation fault shows a plain-language message and no line 
 });
 
 await check('the quality panel steps aside for C: clear message, no requests, no lint squiggles', async () => {
-  await page.click('button[role=tab]:has-text("Quality")');
+  await openTool(page, 'Quality');
   await page.waitForSelector(T('quality-unsupported'), { timeout: 5000 });
   const before = analyzeRequests.length;
   await setCode('int main(void) {\n    int x = 1;\n    return eval(x);\n}\n');
@@ -134,7 +135,7 @@ await check('the language choice survives a page reload', async () => {
 await check('back to Python: the hint disappears, the quality panel analyses again and finds the eval', async () => {
   await pick('python');
   await setCode('result = eval(input())\n');
-  await page.click('button[role=tab]:has-text("Quality")');
+  await openTool(page, 'Quality');
   await page.waitForSelector(`${T('quality-item')}[data-rule=dangerous-call]`, { timeout: 9000 });
   eq(await page.$(T('run-language-hint')), null, 'hint gone');
   eq(await page.$(T('quality-unsupported')), null, 'unsupported notice gone');

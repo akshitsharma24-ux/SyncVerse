@@ -29,7 +29,9 @@
     "check:livekit": "node scripts/check-livekit.mjs",
     "e2e:reconnect": "node scripts/e2e-reconnect.mjs",
     "e2e:whiteboard": "node scripts/e2e-whiteboard.mjs",
-    "e2e:snippets": "node scripts/e2e-snippets.mjs"
+    "e2e:snippets": "node scripts/e2e-snippets.mjs",
+    "e2e:studio": "node scripts/e2e-studio.mjs",
+    "e2e:call-layout": "node scripts/e2e-call-layout.mjs"
   },
   "devDependencies": {
     "axe-core": "^4.13.0",

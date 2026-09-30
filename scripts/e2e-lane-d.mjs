@@ -1,5 +1,6 @@
 // Lane D browser test (needs `npm run dev`): debug access flow, samples menu, progress page. Owner: Lane D.
 import { chromium } from 'playwright-core';
+import { openTool } from './lib/tools.mjs';
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173';
 const room = 'ed-' + Math.random().toString(36).slice(2, 7);
 const out = [];
@@ -13,7 +14,7 @@ const mk = async (name, role) => {
   return p;
 };
 const S = await mk('Stu', 'student'), M = await mk('Mia', 'mentor');
-for (const p of [S, M]) await p.click('[role=tab]:has-text("Debug")');
+for (const p of [S, M]) await openTool(p, 'Debug');
 const T = { timeout: 8000 };
 
 await check('mentor sees Stu with a Request access button', () => M.waitForSelector('[data-testid^=request-]', T));
@@ -34,7 +35,7 @@ await check('request again, allow: mentor gets mirror, student gets banner', asy
   await S.waitForSelector('[data-testid=viewing-banner]', T);
 });
 await check('banner visible even with the Debug tab not active', async () => {
-  await S.click('[role=tab]:has-text("Progress")');
+  await openTool(S, 'Progress');
   await S.waitForSelector('[data-testid=viewing-banner]', T);
 });
 await check('revoke removes the mirror instantly', async () => {
@@ -50,34 +51,34 @@ await check('Samples menu loads a program into BOTH editors', async () => {
 await check('Load demo history shows observations for the student', async () => {
   await S.click('[data-testid=samples-btn]');
   await S.click('text=Load demo history');
-  await S.click('[role=tab]:has-text("Progress")');
+  await openTool(S, 'Progress');
   await S.waitForSelector('[data-testid=observations] >> text=Retry recommended', T);
 });
 await check('mentor table lists demo students and flags stuck', async () => {
-  await M.click('[role=tab]:has-text("Progress")');
+  await openTool(M, 'Progress');
   await M.waitForSelector('[data-testid=mentor-table] >> text=Asha', T);
   await M.waitForSelector('[data-testid=mentor-table] >> text=stuck', T);
 });
 await check('P-D4: mentor tile for Stu flags STUCK after seeded failures, shows no code', async () => {
-  await M.click('[role=tab]:has-text("Debug")');
+  await openTool(M, 'Debug');
   await M.waitForSelector('[data-testid=tile-Stu][data-stuck=true]', T);
   const txt = await M.innerText('[data-testid=overview]');
   if (/def |print\(/.test(txt)) throw new Error('code leaked into tile');
 });
 await check('T-D-09: student sees nudge after 3 failures, Ask for help flags the tile', async () => {
-  await S.click('[role=tab]:has-text("Debug")');
+  await openTool(S, 'Debug');
   await S.waitForSelector('[data-testid=nudge]', T);
   await S.click('[data-testid=nudge-ask]');
   await S.waitForSelector('[data-testid=nudge-sent]', T);
-  await M.click('[role=tab]:has-text("Debug")');
+  await openTool(M, 'Debug');
   await M.waitForSelector('[data-testid=tile-Stu] >> [data-testid=help-flag]', T);
 });
 await check('T-D-05: mentor sees class trends as counts', async () => {
-  await M.click('[role=tab]:has-text("Progress")');
+  await openTool(M, 'Progress');
   await M.waitForSelector('[data-testid=trends] >> text=/2 of 4 students/', T);
 });
 await check('Block: blocked mentor cannot request again', async () => {
-  await M.click('[role=tab]:has-text("Debug")');
+  await openTool(M, 'Debug');
   await M.click('[data-testid^=request-]');
   await S.waitForSelector('[data-testid=access-modal]', T);
   await S.click('[data-testid=block]');
@@ -86,11 +87,11 @@ await check('Block: blocked mentor cannot request again', async () => {
   await M.waitForSelector('[role=alert]:has-text("did not work")', T);
 });
 await check('assist: owner allows pointing, mentor points at line, owner sees it', async () => {
-  await S.click('[role=tab]:has-text("Debug")');
+  await openTool(S, 'Debug');
   await M.click('[data-testid^=request-]').catch(() => {});
   // Block earlier is per-server-session; use a fresh mentor for this check
   const M2 = await mk('Max', 'mentor');
-  await M2.click('[role=tab]:has-text("Debug")');
+  await openTool(M2, 'Debug');
   await M2.click("[aria-label=\"Request access to Stu's session\"]");
   await S.waitForSelector('[data-testid=access-modal]', T);
   await S.click('[data-testid=allow-assist]');
@@ -103,7 +104,7 @@ await check('Reset demo clears progress for the room', async () => {
   S.once('dialog', (d) => d.accept());
   await S.click('[data-testid=samples-btn]');
   await S.click('[data-testid=reset-demo]');
-  await S.click('[role=tab]:has-text("Progress")');
+  await openTool(S, 'Progress');
   await S.waitForSelector('[data-testid=observations] >> text=No runs yet', T);
 });
 await check('Escape closes the Samples menu', async () => {
@@ -114,13 +115,13 @@ await check('Escape closes the Samples menu', async () => {
 await check('progress shows next-concept suggestions, definitions and trend after seeding', async () => {
   await S.click('[data-testid=samples-btn]');
   await S.click('text=Load demo history');
-  await S.click('[role=tab]:has-text("Progress")');
+  await openTool(S, 'Progress');
   await S.waitForSelector('[data-testid=suggestions] >> text=Practise', T);
   await S.waitForSelector('[data-testid=concepts] >> text=Where a loop should start', T);
   await S.waitForSelector('[data-testid=trend]', { timeout: 500 }).catch(() => {});
 });
 await check('mentor broadcast reaches the student as a banner', async () => {
-  await M.click('[role=tab]:has-text("Debug")');
+  await openTool(M, 'Debug');
   await M.fill('[data-testid=broadcast-input]', 'Five minutes left, save your work');
   await M.click('[data-testid=broadcast-send]');
   await S.waitForSelector('[data-testid=broadcast-banner] >> text=Five minutes left', T);

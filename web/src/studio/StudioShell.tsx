@@ -7,6 +7,7 @@ import { AIPanel } from '../ai';
 import { QualityPanel } from '../quality';
 import { DebugPanel } from '../debug';
 import { ProgressPanel } from '../progress';
+import { WhiteboardPanel } from '../whiteboard';
 import { VideoDock } from '../video';
 import { SamplesMenu } from '../demo';
 import { PanelBoundary } from '../shell/PanelBoundary';
@@ -21,6 +22,7 @@ import './workspace.css';
 const TOOLS = [
   { id: 'ai', label: 'Understand', icon: 'sparkle', el: <AIPanel/> },
   { id: 'video', label: 'Together', icon: 'video', el: <VideoDock/> },
+  { id: 'board', label: 'Whiteboard', icon: 'board', el: <WhiteboardPanel/> },
   { id: 'quality', label: 'Code quality', icon: 'checklist', el: <QualityPanel/> },
   { id: 'debug', label: 'Debug', icon: 'bug', el: <DebugPanel/> },
   { id: 'progress', label: 'Your progress', icon: 'chart', el: <ProgressPanel/> },
@@ -58,6 +60,8 @@ export function StudioShell() {
   const active = TOOLS.find(t => t.id === tool)!;
 
   useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
+  // The whiteboard needs room: the first time it is opened the learning panel grows to a comfortable width (the person can resize it).
+  useEffect(() => { if (tool === 'board' && !mobile && layout.learningWidth < 440) updateLayout({ learningWidth: 440 }); }, [tool, mobile]);
   useEffect(() => {
     const onEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape' && overlaySidebar && sidebarVisible && !drawer) {
@@ -124,7 +128,7 @@ export function StudioShell() {
         <div className="sidebar-bottom">
           <button onClick={() => setDrawer('history')} data-testid="history-open"><Icon name="history" size={16}/> Version history</button>
           <button onClick={() => setDrawer('settings')}><Icon name="checklist" size={16}/> Room settings</button>
-          <div className="workspace-user"><span>{session.name.slice(0, 2).toUpperCase()}</span><div><strong>{session.name}</strong><small data-testid="my-role">{session.role === 'student' ? 'Here to learn' : session.role}</small></div><span className="live-dot"/></div>
+          <div className="workspace-user"><span>{session.name.slice(0, 2).toUpperCase()}</span><div><strong>{session.name}</strong><small data-testid="my-role">{isOwner ? 'owner · ' : ''}{session.role === 'student' ? 'Here to learn' : session.role}</small></div><span className="live-dot"/></div>
         </div>
       </aside>
       {sidebarVisible && !overlaySidebar && <ResizeHandle axis="x" label="Resize sidebar" controls="workspace-sidebar" value={sidebarWidth} min={180} max={280} onChange={sidebarWidth => updateLayout({ sidebarWidth })} onDrag={setResizing}/>}

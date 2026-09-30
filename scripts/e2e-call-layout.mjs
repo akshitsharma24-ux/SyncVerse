@@ -1,10 +1,14 @@
 // Layout-only fixture using the installed LiveKit structure. No call or media access.
 import { chromium } from 'playwright-core';
 import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
+import { mkdir } from 'node:fs/promises';
+await mkdir(path.join(os.tmpdir(), 'syncverse-studio'), { recursive: true });
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
 try {
-  await page.goto(`http://localhost:5174/?name=Layout-check&role=student&room=studio-layout-${Date.now()}`);
+  await page.goto(`${process.env.E2E_BASE ?? 'http://localhost:5173'}/?name=Layout-check&role=student&room=studio-layout-${Date.now()}`);
   await page.locator('.workspace-editor').waitFor();
   await page.evaluate(() => {
     const fixture = document.createElement('div');
@@ -47,5 +51,5 @@ try {
     console.log(`PASS Call/chat layout fixture at ${width}px`);
   }
   await page.locator('#call-layout-fixture').evaluate(element => { element.style.width = '320px'; });
-  await page.locator('#call-layout-fixture').screenshot({ path: 'frontend2/verification/call-layout.png' });
+  await page.locator('#call-layout-fixture').screenshot({ path: path.join(os.tmpdir(), 'syncverse-studio', 'call-layout.png') });
 } finally { await browser.close(); }

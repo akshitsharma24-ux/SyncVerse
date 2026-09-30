@@ -1,8 +1,15 @@
 import { chromium } from 'playwright-core';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
-const base = 'http://localhost:5174';
+// The Quiet Studio frontend: landing page, real rooms, every tool, layout, persistence, phones. Needs npm run dev.
+// Screenshots and axe results go to <temp>/syncverse-studio.
+const base = process.env.E2E_BASE ?? 'http://localhost:5173';
+const OUT = path.join(os.tmpdir(), 'syncverse-studio');
+await mkdir(OUT, { recursive: true });
+const out = (name) => path.join(OUT, name);
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
 const results = [];
 const errors = [];
@@ -11,12 +18,12 @@ const page = await context.newPage();
 page.on('pageerror', e => errors.push(e.message));
 const check = async (name, fn) => { try { await fn(); results.push({ name, pass: true }); console.log('PASS', name); } catch (e) { results.push({ name, pass: false, error: e.message }); console.log('FAIL', name, e.message); } };
 const noOverflow = p => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-const axe = await readFile(new URL('../../node_modules/axe-core/axe.min.js', import.meta.url), 'utf8');
+const axe = await readFile(new URL('../node_modules/axe-core/axe.min.js', import.meta.url), 'utf8');
 try {
   await page.goto(base);
   await page.locator('.studio-preview').waitFor();
   await page.evaluate(async () => { await document.fonts.ready; await Promise.all(document.getAnimations().filter(a => a.effect.getTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
-  await page.screenshot({ path: 'frontend2/verification/desktop.png', fullPage: false, animations: 'disabled' });
+  await page.screenshot({ path: out('desktop.png'), fullPage: false, animations: 'disabled' });
   await check('Dark landing page and preview', async () => { assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark'); assert.equal(await page.locator('h1').innerText(), 'A little curiosity.\nA lot of possibility.'); assert(await noOverflow(page)); });
   await check('Create and join are centered, visible primary actions', async () => {
     const create = await page.getByTestId('hero-create').boundingBox();
@@ -49,14 +56,14 @@ try {
     await page.evaluate(() => document.getAnimations().filter(a => a.effect.getTiming().iterations !== Infinity).forEach(a => a.finish()));
     await page.addScriptTag({ content: axe });
     const result = await page.evaluate(async () => window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } }));
-    await writeFile('frontend2/verification/axe-landing.json', JSON.stringify(result.violations, null, 2));
+    await writeFile(out('axe-landing.json'), JSON.stringify(result.violations, null, 2));
     assert.deepEqual(result.violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`), []);
   });
   await page.locator('.preview-files').getByRole('button', { name: 'first_steps.py' }).click();
   await page.locator('.preview-learn-tabs').getByRole('button', { name: 'Learn', exact: true }).click();
   await page.evaluate(() => document.querySelectorAll('.reveal').forEach(el => el.classList.add('revealed')));
   await page.waitForTimeout(900);
-  await page.screenshot({ path: 'frontend2/verification/landing-full.png', fullPage: true });
+  await page.screenshot({ path: out('landing-full.png'), fullPage: true });
   let room;
   await check('Create a real room through the new form', async () => {
     await page.getByTestId('hero-create').click();
@@ -74,7 +81,7 @@ try {
     await page.getByTestId('copy-invite').click();
     assert.equal(await page.evaluate(() => navigator.clipboard.readText()), `${base}/?room=${room}`);
   });
-  await page.screenshot({ path: 'frontend2/verification/workspace.png', fullPage: true });
+  await page.screenshot({ path: out('workspace.png'), fullPage: true });
   await check('Every workspace tool, focus mode, resizing, and history', async () => {
     assert(await page.locator('#workspace-sidebar').isHidden(), 'Sidebar should start collapsed');
     assert.equal(await page.getByText('One idea at a time', { exact: false }).count(), 0);
@@ -85,7 +92,7 @@ try {
     assert(await page.locator('.studio-editor-title').getByRole('button', { name: 'Focus mode', exact: true }).isVisible());
     assert.equal(await page.getByRole('button', { name: 'Leave room', exact: true }).innerText(), 'Leave room');
     await page.getByRole('button', { name: 'Show sidebar', exact: true }).click();
-    for (const id of ['video', 'quality', 'debug', 'progress', 'ai']) {
+    for (const id of ['video', 'board', 'quality', 'debug', 'progress', 'ai']) {
       await page.locator(`#tool-${id}`).click();
       assert(await page.locator(`#panel-${id}`).isVisible());
       assert.equal(await page.locator('[role="tabpanel"]:visible').count(), 1);
@@ -161,7 +168,7 @@ try {
   await check('Workspace accessibility audit', async () => {
     await page.addScriptTag({ content: axe });
     const result = await page.evaluate(async () => window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } }));
-    await writeFile('frontend2/verification/axe-workspace.json', JSON.stringify(result.violations, null, 2));
+    await writeFile(out('axe-workspace.json'), JSON.stringify(result.violations, null, 2));
     assert.deepEqual(result.violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`), []);
   });
   await check('Phone and tablet layouts, including a real mobile workspace', async () => {
@@ -170,7 +177,7 @@ try {
     mobile.on('pageerror', e => errors.push(e.message));
     await mobile.goto(base); await mobile.locator('.studio-preview').waitFor();
     assert(await noOverflow(mobile), '390px landing overflow');
-    await mobile.screenshot({ path: 'frontend2/verification/mobile.png', fullPage: true });
+    await mobile.screenshot({ path: out('mobile.png'), fullPage: true });
     await mobile.setViewportSize({ width: 768, height: 1024 }); assert(await noOverflow(mobile), '768px landing overflow');
     await mobile.setViewportSize({ width: 360, height: 780 }); assert(await noOverflow(mobile), '360px landing overflow');
     await mobile.getByTestId('hero-join').click();
@@ -193,15 +200,14 @@ try {
     assert(await mobile.locator('#workspace-sidebar').isVisible());
     await mobile.keyboard.press('Escape');
     assert(await mobile.locator('#workspace-sidebar').isHidden());
-    await mobile.screenshot({ path: 'frontend2/verification/mobile-workspace.png', fullPage: true });
+    await mobile.screenshot({ path: out('mobile-workspace.png'), fullPage: true });
     await mobile.getByRole('button', { name: 'Leave room', exact: true }).click();
     await mobile.getByTestId('hero-create').waitFor();
     await mobileContext.close();
   });
   await check('No browser runtime errors', () => assert.deepEqual(errors, []));
-  await check('Original frontend remains available', async () => { const response = await fetch('http://localhost:5173'); assert(response.ok); assert((await response.text()).includes('<title>SyncVerse</title>')); });
 } finally {
-  await writeFile('frontend2/verification/results.json', JSON.stringify({ results, errors }, null, 2));
+  await writeFile(out('results.json'), JSON.stringify({ results, errors }, null, 2));
   await browser.close();
 }
 if (results.some(r => !r.pass)) process.exitCode = 1;

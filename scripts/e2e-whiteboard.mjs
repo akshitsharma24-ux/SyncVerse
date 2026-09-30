@@ -2,6 +2,7 @@
 // Needs the dev servers running:  npm run dev   then   npm run e2e:whiteboard
 // Owner: Lane A.
 import { chromium } from 'playwright-core';
+import { openTool } from './lib/tools.mjs';
 
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173';
 const room = 'board-' + Math.random().toString(36).slice(2, 7);
@@ -18,15 +19,18 @@ const expectEq = (got, want, what) => {
   if (got !== want) throw new Error(`${what}: expected ${JSON.stringify(want)}, got ${JSON.stringify(got)}`);
 };
 
+// The learning tools live in the side panel of the Quiet Studio shell; its tool picker is always visible.
+const openBoard = (p) => openTool(p, 'Board');
+
 const browser = await chromium.launch({ channel: process.env.E2E_CHANNEL ?? 'msedge', headless: true });
-const mk = async (name, role, openBoard = true) => {
+const mk = async (name, role, withBoard = true) => {
   const ctx = await browser.newContext({ viewport: { width: 1300, height: 820 }, acceptDownloads: true });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log(`[pageerror ${name}]`, e.message));
   await page.goto(`${BASE}/?name=${name}&role=${role}&room=${room}`);
   await page.waitForSelector('.monaco-editor', { timeout: 20000 });
   await page.waitForFunction(() => window.__sv?.collab, null, { timeout: 10000 });
-  if (openBoard) await page.getByRole('tab', { name: 'Board' }).click();
+  if (withBoard) await openBoard(page);
   await page.waitForSelector('[data-testid="board-canvas"]', { state: 'visible' });
   return page;
 };
@@ -57,7 +61,7 @@ async function drag(p, from, to, steps = 12) {
   await p.mouse.move(x2, y2, { steps });
   await p.mouse.up();
 }
-/** Is there ink (anything that is not the paper colour) at this fraction of the canvas? Looks at a small square. */
+/** Is there ink (anything that is not the dark page colour, the faint dots included) at this fraction of the canvas? Looks at a small square. */
 const inkAt = (p, fx, fy) =>
   p.evaluate(
     ([fx, fy]) => {
@@ -66,7 +70,7 @@ const inkAt = (p, fx, fy) =>
       const cx = Math.round(c.width * fx);
       const cy = Math.round(c.height * fy);
       const d = ctx.getImageData(cx - 3, cy - 3, 7, 7).data;
-      for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 0xfb) > 40 || Math.abs(d[i + 1] - 0xfa) > 40 || Math.abs(d[i + 2] - 0xf7) > 40) return true;
+      for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] - 0x15) > 40 || Math.abs(d[i + 1] - 0x17) > 40 || Math.abs(d[i + 2] - 0x14) > 40) return true;
       return false;
     },
     [fx, fy],
@@ -174,7 +178,7 @@ await check('viewer: even a hand-made write is refused by the server', async () 
   // the viewer's own copy keeps the refused item until it reloads; after a reload it matches the room again
   await V.reload();
   await V.waitForSelector('.monaco-editor', { timeout: 20000 });
-  await V.getByRole('tab', { name: 'Board' }).click();
+  await openBoard(V);
   await waitShapes(V, 4, 'viewer after reload');
 });
 
@@ -221,7 +225,7 @@ await check('Save as picture downloads a PNG named after the room', async () => 
 await check('the board survives a page reload (saved with the room)', async () => {
   await B.reload();
   await B.waitForSelector('.monaco-editor', { timeout: 20000 });
-  await B.getByRole('tab', { name: 'Board' }).click();
+  await openBoard(B);
   await waitShapes(B, 6, 'B after reload');
 });
 

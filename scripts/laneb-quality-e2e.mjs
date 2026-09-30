@@ -1,6 +1,7 @@
 // Lane B (Simrit) browser checks for P-B4 (quality panel). Needs the dev servers running:  npm run dev
 //   node scripts/laneb-quality-e2e.mjs        (E2E_SHOTS=<dir> also saves a screenshot)
 import { chromium } from 'playwright-core';
+import { openTool } from './lib/tools.mjs';
 
 const BASE = process.env.E2E_BASE ?? 'http://localhost:5173';
 const SHOTS = process.env.E2E_SHOTS;
@@ -46,7 +47,7 @@ page.on('request', (r) => {
 await page.goto(`${BASE}/?name=Asha&role=student&room=${room}`);
 await page.waitForSelector('.monaco-editor', { timeout: 20000 });
 await page.waitForFunction(() => window.__sv?.editor.getValue().includes('def average'), null, { timeout: 10000 });
-await page.click('button[role=tab]:has-text("Quality")');
+await openTool(page, 'Quality');
 await page.waitForSelector(T('quality-panel'));
 
 const setCode = (t) => page.evaluate((x) => window.__sv.editor.replaceAll(x), t);

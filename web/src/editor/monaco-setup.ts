@@ -19,11 +19,17 @@ import 'monaco-editor/esm/vs/basic-languages/css/css.contribution';
 import 'monaco-editor/esm/vs/basic-languages/markdown/markdown.contribution';
 import 'monaco-editor/esm/vs/basic-languages/yaml/yaml.contribution';
 import 'monaco-editor/esm/vs/basic-languages/xml/xml.contribution';
+// The lean core has no completion list and no snippet support of its own: pull in just those two contributions.
+import 'monaco-editor/esm/vs/editor/contrib/snippet/browser/snippetController2';
+import 'monaco-editor/esm/vs/editor/contrib/suggest/browser/suggestController';
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import { registerSnippets } from './snippets';
 
 self.MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
 };
+
+registerSnippets(); // Tab-completable snippets (Java sout, fori, ...) and completions; see snippets.ts
 
 monaco.editor.defineTheme('syncverse', {
   base: 'vs',
@@ -82,6 +88,17 @@ monaco.editor.defineTheme('syncverse-dark', {
     'editorGutter.background': '#191C16',
     'scrollbarSlider.background': '#38352F99',
     'scrollbarSlider.hoverBackground': '#6F6B62AA',
+    // completion list and snippet blanks in the Quiet Studio colours
+    'editorWidget.background': '#1E201C',
+    'editorWidget.border': '#393C36',
+    'editorSuggestWidget.background': '#1E201C',
+    'editorSuggestWidget.border': '#393C36',
+    'editorSuggestWidget.foreground': '#D6DAC9',
+    'editorSuggestWidget.selectedBackground': '#2D3029',
+    'editorSuggestWidget.highlightForeground': '#C0CD9D',
+    'editorSuggestWidget.focusHighlightForeground': '#C0CD9D',
+    'editor.snippetTabstopHighlightBackground': '#C0CD9D22',
+    'editor.snippetFinalTabstopHighlightBorder': '#C0CD9D66',
   },
 });
 

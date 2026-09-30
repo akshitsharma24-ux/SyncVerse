@@ -1,0 +1,168 @@
+/* Whiteboard in the Quiet Studio look: charcoal page, olive accent, small rounded controls. Owner: Lane A. */
+.bd-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.bd-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.bd-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 8px;
+  background: #ffffff03;
+}
+.bd-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-2);
+}
+.bd-btn:hover:not(:disabled) {
+  background: #ffffff0a;
+  color: var(--ink);
+}
+.bd-btn[aria-pressed='true'] {
+  background: #c0cd9d12;
+  border-color: #69745a;
+  color: #d4debf;
+}
+.bd-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.bd-swatch {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #ffffff2e;
+}
+.bd-btn[aria-pressed='true'] .bd-swatch {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.btn.bd-danger {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn.bd-danger:hover {
+  background: #4a2e28;
+}
+.bd-readonly {
+  border-radius: 6px;
+}
+.bd-stage {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  outline: none;
+}
+.bd-canvas-wrap {
+  position: relative;
+  box-sizing: content-box;
+  border: 1px solid #393c36;
+  border-radius: 8px;
+  background: #151714; /* the page; always dark, see palette.ts */
+  overflow: hidden;
+  line-height: 0;
+}
+.bd-canvas {
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+.bd-text {
+  position: absolute;
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px dashed currentColor;
+  background: transparent;
+  outline: none;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.bd-foot {
+  flex: none;
+  min-height: 16px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.bd-parked {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed var(--rule-soft);
+  border-radius: 8px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.bd-parked p {
+  margin: 0;
+}
+
+/* Large view: a dialog on <body>, like the room drawer and the other dialogs. */
+.bd-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  padding: 14px;
+  background: var(--overlay);
+  backdrop-filter: blur(9px);
+}
+.bd-root.expanded {
+  flex: 1;
+  min-width: 0;
+  padding: 14px;
+  background: #1c1c1b;
+  border: 1px solid #464843;
+  border-radius: 12px;
+  box-shadow: 0 32px 130px #0008;
+  animation: dialog-in 0.25s ease-out;
+}
+.bd-root.expanded .bd-stage {
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+}
+.bd-root.expanded .bd-btn {
+  width: 32px;
+  height: 32px;
+}
+.bd-root.expanded .bd-foot {
+  font-size: 11.5px;
+}
+
+/* A narrow learning panel: slightly smaller buttons so the toolbar wraps onto fewer rows. */
+@container learning (max-width: 360px) {
+  .bd-btn {
+    width: 26px;
+    height: 26px;
+  }
+  .bd-bar {
+    gap: 5px 3px;
+  }
+}
+
+/* The stage is only focused from code (so Ctrl+Z works after drawing): no focus ring around the whole page. */
+.bd-stage[tabindex]:focus,
+.bd-stage[tabindex]:focus-visible {
+  outline: none;
+}

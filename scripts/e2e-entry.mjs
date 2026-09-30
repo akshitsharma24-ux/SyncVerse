@@ -1,4 +1,4 @@
-﻿// Entry page and workspace chrome. Needs the dev servers running:  npm run dev   then   npm run e2e:entry
+// Entry page and workspace chrome of the Quiet Studio frontend. Needs the dev servers running:  npm run dev   then   npm run e2e:entry
 // Owner: Lane A.
 import { chromium } from 'playwright-core';
 
@@ -19,45 +19,39 @@ const newPage = async (opts = {}) => {
   page.on('pageerror', (e) => console.log('[pageerror]', e.message));
   return page;
 };
+const showSidebar = (p) => p.getByRole('button', { name: 'Show sidebar', exact: true }).click();
 
 const P1 = await newPage();
 await P1.goto(BASE);
 
-await check('entry page shows the headline, card and live editor mock', async () => {
-  await P1.waitForSelector('h1.headline', { timeout: 10000 });
-  const h = await P1.textContent('h1.headline');
-  if (!h.includes('Learn to code together.') || !h.includes('Understand it on your own.')) throw new Error('headline: ' + h);
-  await P1.waitForSelector('[data-testid="entry-card"]');
-  await P1.waitForSelector('.ide');
+await check('entry page shows the headline, the Create / Join actions and the live workspace preview', async () => {
+  await P1.waitForSelector('h1', { timeout: 10000 });
+  const h = (await P1.textContent('h1')).replace(/\s+/g, ' ');
+  if (!h.includes('A little curiosity.') || !h.includes('possibility.')) throw new Error('headline: ' + h);
+  await P1.waitForSelector('[data-testid="hero-create"]');
+  await P1.waitForSelector('[data-testid="hero-join"]');
+  await P1.waitForSelector('.studio-preview');
 });
 
-await check('all six feature cells render', async () => {
-  const n = await P1.locator('.cell').count();
-  if (n !== 6) throw new Error('cells: ' + n);
+await check('the three experience cards render', async () => {
+  const n = await P1.locator('.experience-card').count();
+  if (n !== 3) throw new Error('cards: ' + n);
 });
 
-await check('the mock editor animates (caret moves between steps)', async () => {
-  const pos = () => P1.evaluate(() => document.querySelector('.cursor')?.getAttribute('style') ?? '');
-  const a = await pos();
-  await P1.waitForTimeout(3600);
-  const b = await pos();
-  if (a === b) throw new Error('caret did not move');
-});
-
-await check('reduced motion: mock holds still on the error + explanation frame', async () => {
+await check('reduced motion: the decorative animations are switched off', async () => {
   const p = await newPage({ reducedMotion: 'reduce' });
   await p.goto(BASE);
-  await p.waitForSelector('.ide');
-  await p.waitForTimeout(2500);
-  const t = await p.textContent('.ide');
+  await p.waitForSelector('.orbit-one');
+  const name = await p.evaluate(() => getComputedStyle(document.querySelector('.orbit-one')).animationName);
   await p.context().close();
-  if (!t.includes('IndexError') || !t.includes('The loop ran one step too far')) throw new Error('not on the story frame');
+  if (name !== 'none') throw new Error('orbit still animates: ' + name);
 });
 
 let created = '';
 await check('create a room: generated code is shown, submit opens the workspace with that code', async () => {
+  await P1.click('[data-testid="hero-create"]');
   created = (await P1.textContent('[data-testid="entry-generated"]')).trim();
-  if (!/^[a-z]+-[a-z]+-\d\d$/.test(created)) throw new Error('code format: ' + created);
+  if (!/^studio-[a-z]+-[a-z0-9]{5}$/.test(created)) throw new Error('code format: ' + created);
   await P1.fill('[data-testid="entry-name"]', 'Akshit');
   await P1.click('[data-testid="entry-submit"]');
   await P1.waitForSelector('[data-testid="topbar"]', { timeout: 15000 });
@@ -77,13 +71,14 @@ await check('status chip reports the services and opens a readable list', async 
   await P1.waitForSelector('[data-testid="status-popover"]', { state: 'detached', timeout: 3000 });
   return state;
 });
+
 await check('invite link copy puts /?room=<code> on the clipboard', async () => {
   await P1.click('[data-testid="copy-invite"]');
   const clip = await P1.evaluate(() => navigator.clipboard.readText());
   if (clip !== `${BASE}/?room=${created}`) throw new Error('clipboard: ' + clip);
 });
 
-await check('invite link opens the entry page in Join mode with the code filled in', async () => {
+await check('invite link opens the entry dialog in Join mode with the code filled in; people see each other arrive and leave', async () => {
   const P2 = await newPage();
   await P2.goto(`${BASE}/?room=${created}`);
   await P2.waitForSelector('[data-testid="entry-code"]');
@@ -101,20 +96,22 @@ await check('invite link opens the entry page in Join mode with the code filled 
   await P1.waitForSelector('[data-topbar-presence="Miti"]', { timeout: 8000 });
   await P2.waitForSelector('[data-topbar-presence="Akshit"]', { timeout: 8000 });
   await P1.waitForSelector('[data-presence^="Miti:"]', { timeout: 8000 });
-  if (!(await sawJoin)) {
-    const seen = await P1.evaluate(() => ({ toasts: [...document.querySelectorAll('[data-testid="toast"]')].map((t) => t.textContent), people: [...document.querySelectorAll('[data-topbar-presence]')].map((p) => p.getAttribute('data-topbar-presence')), url: location.href }));
-    throw new Error('no "Miti joined" toast on the other tab; P1 sees ' + JSON.stringify(seen));
-  }
+  if (!(await sawJoin)) throw new Error('no "Miti joined" toast on the other tab');
   const sawLeft = P1.waitForSelector('[data-testid="toast"]:has-text("Miti left")', { timeout: 20000 }).then(() => true, () => false);
   await P2.context().close();
   if (!(await sawLeft)) throw new Error('no "Miti left" toast on the other tab');
 });
 
-await check('joining with an empty code shows a clear message', async () => {
+await check('joining without a usable code is refused with a clear message', async () => {
   const p = await newPage();
   await p.goto(BASE);
-  await p.getByRole('button', { name: 'Join a room' }).first().click();
+  await p.click('[data-testid="hero-join"]');
   await p.fill('[data-testid="entry-name"]', 'Sam');
+  // an empty box is stopped by the browser itself (the field is required) and the dialog stays open
+  await p.click('[data-testid="entry-submit"]');
+  if (!(await p.evaluate(() => document.querySelector('[data-testid="entry-code"]').validity.valueMissing))) throw new Error('an empty code was not stopped');
+  // spaces and symbols alone pass the browser but leave nothing once cleaned: the app explains
+  await p.fill('[data-testid="entry-code"]', '  !! ');
   await p.click('[data-testid="entry-submit"]');
   await p.waitForSelector('[role="alert"]', { timeout: 3000 });
   const t = await p.textContent('[role="alert"]');
@@ -125,7 +122,7 @@ await check('joining with an empty code shows a clear message', async () => {
 await check('a messy room code is cleaned ("My Room!" becomes my-room)', async () => {
   const p = await newPage();
   await p.goto(BASE);
-  await p.getByRole('button', { name: 'Join a room' }).first().click();
+  await p.click('[data-testid="hero-join"]');
   await p.fill('[data-testid="entry-name"]', 'Sam');
   await p.fill('[data-testid="entry-code"]', 'My Room!');
   await p.click('[data-testid="entry-submit"]');
@@ -135,70 +132,66 @@ await check('a messy room code is cleaned ("My Room!" becomes my-room)', async (
   if (code !== 'my-room') throw new Error('got ' + code);
 });
 
-await check('workspace: tabs switch, every tab stays mounted, dock is resizable by keyboard', async () => {
-  await P1.getByRole('tab', { name: 'Debug', exact: true }).click();
-  await P1.waitForSelector('[data-testid="debug-panel"]', { state: 'visible', timeout: 8000 });
-  const before = await P1.evaluate(() => document.querySelector('aside').getBoundingClientRect().width);
-  await P1.focus('[role="separator"][aria-orientation="vertical"]');
+await check('workspace: every learning tool opens, only one panel is shown, the panel resizes by keyboard', async () => {
+  await showSidebar(P1);
+  for (const id of ['video', 'board', 'quality', 'debug', 'progress', 'ai']) {
+    await P1.click(`#tool-${id}`);
+    await P1.waitForSelector(`#panel-${id}`, { state: 'visible', timeout: 8000 });
+    const shown = await P1.locator('[role="tabpanel"]:visible').count();
+    if (shown !== 1) throw new Error(`${id}: ${shown} panels visible`);
+  }
+  await P1.getByRole('button', { name: 'Hide sidebar', exact: true }).click();
+  const before = await P1.evaluate(() => document.querySelector('#learning-tools').getBoundingClientRect().width);
+  await P1.focus('[role="separator"][aria-label="Resize learning panel"]');
   await P1.keyboard.press('ArrowLeft');
   await P1.keyboard.press('ArrowLeft');
-  const after = await P1.evaluate(() => document.querySelector('aside').getBoundingClientRect().width);
-  if (!(after > before)) throw new Error(`dock width ${before} -> ${after}`);
+  const after = await P1.evaluate(() => document.querySelector('#learning-tools').getBoundingClientRect().width);
+  if (!(after > before)) throw new Error(`learning panel width ${before} -> ${after}`);
 });
 
-await check('keyboard: the first Tab stop is a skip link that jumps to the editor; tabs move with arrow keys', async () => {
+await check('keyboard: the first Tab stop is a skip link that jumps to the editor; tools move with the arrow keys', async () => {
   const p = await newPage();
   await p.goto(`${BASE}/?name=Kay&role=student&room=kb-${Math.random().toString(36).slice(2, 6)}`);
   await p.waitForSelector('.monaco-editor', { timeout: 20000 });
   await p.keyboard.press('Tab');
   const first = await p.evaluate(() => document.activeElement?.textContent?.trim());
-  if (first !== 'Skip to the editor') throw new Error('first focus was ' + JSON.stringify(first));
+  if (first !== 'Skip to editor') throw new Error('first focus was ' + JSON.stringify(first));
   await p.keyboard.press('Enter');
   const target = await p.evaluate(() => document.activeElement?.id);
   if (target !== 'editor-region') throw new Error('skip link landed on ' + target);
   if ((await p.locator('main').count()) !== 1) throw new Error('expected exactly one main landmark');
-  // tabs: roving focus with arrows, Home / End
-  await p.getByRole('tab', { name: 'AI', exact: true }).focus();
-  await p.keyboard.press('ArrowRight');
-  await p.waitForFunction(() => document.activeElement?.id === 'tab-quality' && document.activeElement.getAttribute('aria-selected') === 'true');
+  // tools: roving focus with arrows, Home / End (the list runs down the sidebar)
+  await showSidebar(p);
+  await p.locator('#tool-ai').focus();
+  await p.keyboard.press('ArrowDown');
+  await p.waitForFunction(() => document.activeElement?.id === 'tool-video' && document.activeElement.getAttribute('aria-selected') === 'true');
   await p.keyboard.press('End');
-  await p.waitForFunction(() => document.activeElement?.id === 'tab-board');
+  await p.waitForFunction(() => document.activeElement?.id === 'tool-progress');
   await p.keyboard.press('Home');
-  await p.waitForFunction(() => document.activeElement?.id === 'tab-video');
-  await p.keyboard.press('ArrowLeft');
-  await p.waitForFunction(() => document.activeElement?.id === 'tab-board');
-  // the selected tab controls a labelled panel
+  await p.waitForFunction(() => document.activeElement?.id === 'tool-ai');
+  await p.keyboard.press('ArrowUp');
+  await p.waitForFunction(() => document.activeElement?.id === 'tool-progress');
+  // the selected tool controls a labelled panel
   const ok = await p.evaluate(() => {
-    const t = document.querySelector('[role="tablist"][aria-label="Tools"] [role="tab"][aria-selected="true"]');
+    const t = document.querySelector('[role="tablist"][aria-label="Workspace tools"] [role="tab"][aria-selected="true"]');
     const panel = document.getElementById(t.getAttribute('aria-controls'));
-    return panel?.getAttribute('aria-labelledby') === t.id;
+    return Boolean(panel?.getAttribute('aria-label')) && panel.getAttribute('role') === 'tabpanel';
   });
   await p.context().close();
-  if (!ok) throw new Error('tab and panel are not linked');
+  if (!ok) throw new Error('tool and panel are not linked');
 });
 
-await check('theme: first visit follows the system, the toggle switches it, the choice is remembered, and the editor follows', async () => {
+await check('theme: the workspace is always the dark Quiet Studio look, whatever the OS asks for, and the editor follows', async () => {
   const lum = (rgb) => rgb.match(/\d+/g).slice(0, 3).map(Number).reduce((a, b) => a + b, 0);
-  const p = await newPage({ colorScheme: 'dark' });
+  const p = await newPage({ colorScheme: 'light' });
   await p.goto(BASE);
-  await p.waitForSelector('h1.headline');
-  const html = () => p.getAttribute('html', 'data-theme');
-  const bg = () => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  if ((await html()) !== 'dark') throw new Error('an OS set to dark did not open dark: ' + (await html()));
-  if (lum(await bg()) > 150) throw new Error('dark theme has a light page background: ' + (await bg()));
-  await p.click('[data-testid="theme-toggle"]');
-  if ((await html()) !== 'light' || lum(await bg()) < 500) throw new Error('toggle did not switch to light');
-  await p.reload();
-  await p.waitForSelector('h1.headline');
-  if ((await html()) !== 'light') throw new Error('the choice was not remembered: a reload went back to ' + (await html()) + ' (the OS is dark)');
-  await p.click('[data-testid="theme-toggle"]');
-  if ((await html()) !== 'dark') throw new Error('toggle did not switch back to dark');
-  // the editor follows the theme, in the workspace too
+  await p.waitForSelector('h1');
+  if ((await p.getAttribute('html', 'data-theme')) !== 'dark') throw new Error('an OS set to light changed the theme: ' + (await p.getAttribute('html', 'data-theme')));
+  const bg = await p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  if (lum(bg) > 150) throw new Error('page background is not dark: ' + bg);
   await p.goto(`${BASE}/?name=Dee&role=student&room=theme-${Math.random().toString(36).slice(2, 6)}`);
   await p.waitForSelector('.monaco-editor', { timeout: 20000 });
-  if (!(await p.evaluate(() => document.querySelector('.monaco-editor').classList.contains('vs-dark')))) throw new Error('editor is not dark in dark mode');
-  await p.click('[data-testid="theme-toggle"]');
-  await p.waitForFunction(() => !document.querySelector('.monaco-editor').classList.contains('vs-dark'), null, { timeout: 4000 });
+  if (!(await p.evaluate(() => document.querySelector('.monaco-editor').classList.contains('vs-dark')))) throw new Error('editor is not dark');
   await p.context().close();
 });
 
@@ -206,13 +199,12 @@ await check('a crashing panel is contained: only that panel shows an error card,
   const p = await newPage();
   await p.goto(`${BASE}/?name=Crash&role=student&room=crash-${Math.random().toString(36).slice(2, 6)}&crash=ai`);
   await p.waitForSelector('.monaco-editor', { timeout: 20000 });
-  await p.getByRole('tab', { name: 'AI', exact: true }).click();
-  await p.waitForSelector('[data-testid="panel-crash"][data-panel="ai"]', { timeout: 5000 });
-  // editor still live and typable, other tabs still render, top bar still there
+  await p.waitForSelector('[data-testid="panel-crash"][data-panel="ai"]', { timeout: 5000 }); // Understand is the tool that opens first
+  // editor still live and typable, other tools still render, top bar still there
   await p.waitForFunction(() => document.body.innerText.includes('live'), null, { timeout: 8000 });
   await p.evaluate(() => window.__sv.editor.replaceAll('still_works = 1\n'));
   if ((await p.evaluate(() => window.__sv.editor.getValue())) !== 'still_works = 1\n') throw new Error('editor broke');
-  await p.getByRole('tab', { name: 'Quality', exact: true }).click();
+  await p.locator('select[aria-label="Learning tool"]').selectOption({ label: 'Code quality' });
   await p.waitForSelector('[data-testid="quality-panel"]');
   await p.waitForSelector('[data-testid="topbar"]');
   const crashes = await p.locator('[data-testid="panel-crash"]').count();
@@ -224,7 +216,7 @@ await check('no horizontal overflow on the entry page at tablet (820px) and phon
   for (const width of [820, 390]) {
     const p = await newPage({ viewport: { width, height: 900 } });
     await p.goto(BASE);
-    await p.waitForSelector('h1.headline');
+    await p.waitForSelector('h1');
     const over = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     await p.context().close();
     if (over > 2) throw new Error(`${width}px overflows by ${over}px`);
@@ -234,10 +226,3 @@ await check('no horizontal overflow on the entry page at tablet (820px) and phon
 await browser.close();
 for (const [ok, name, d] of results) console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${d ? '  - ' + d : ''}`);
 process.exit(results.every((r) => r[0]) ? 0 : 1);
-
-
-
-
-
-
-

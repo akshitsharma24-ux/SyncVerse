@@ -1,45 +1,43 @@
-# SyncVerse — Quiet Studio
+# web: the SyncVerse frontend (Quiet Studio)
 
-A separate dark frontend exploration. The original `web/` app remains the default in every root npm script.
+The default frontend. Dark charcoal surfaces, warm white type, a muted olive accent, locally bundled Geist fonts, a serif contrast
+in the headline. It replaced the earlier "paper and ink" frontend, which is kept in `../frontend-old/` (see its README).
 
-## Preview
-
-- New design: **http://localhost:5174**
-- Original frontend: **http://localhost:5173**
-- Existing API: **http://localhost:4000**
-
-Start the original app and API from the repository root with `npm run dev`. Start this alternative in another terminal:
-
-```powershell
-npm --prefix frontend2 run dev
+```
+npm run dev          # from the repository root: API on :4000, this frontend on http://localhost:5173
+npm run build        # typecheck + production build
+npm run typecheck
 ```
 
-The existing root `node_modules` supplies dependencies. No root manifest or lockfile changes are needed. Port 5174 is strict. If it is already running, open the preview link directly.
+## What is in it
 
-## Design and behavior
+- **Entry page** (`src/JoinGate.tsx`, `src/studio/StudioPreview.tsx`): centred Create room / Join room actions, a working
+  preview with three example programs, account sign-in, recent rooms, invite links.
+- **Workspace shell** (`src/studio/StudioShell.tsx`, `layout.tsx`, `workspace.css`): the editor sits directly under the room bar;
+  the sidebar (starts collapsed), the console and the learning panel each open, close and resize on their own (drag, or arrow keys
+  on the divider); sizes and visibility are remembered (`localStorage` key `studio.layout.v2`). Focus mode hides the panels and
+  restores them on exit. On phones the console and learning panel stack and resize vertically.
+- **Learning tools** (the list at the top of `StudioShell.tsx`): Understand (AI explain and patch), Together (video), Whiteboard,
+  Code quality, Debug, Your progress. To add a tool, add one line to that list.
+- **Shared whiteboard** (`src/whiteboard/`, contract in `shared/whiteboard.ts`): pen, line, arrow, rectangle, ellipse, text,
+  eraser, six colours, three sizes, undo, mentor-only clear, PNG export, and a large view. A dark page with a dot grid; see
+  `palette.ts` for the colours and `whiteboard.css` for the look.
+- **Editor** (`src/editor/`): Monaco + Yjs. Tab-completable snippets (Java `sout`, `fori`, `main`, ...) and completions are in
+  `snippets.ts`; `monaco-setup.ts` loads the suggest and snippet modules and defines the dark theme.
 
-Charcoal surfaces, warm white typography, muted olive accents, locally bundled Geist fonts, and a serif contrast in the headline. Motion includes entry transitions, cursors, an orbital code illustration, hover feedback, and scroll reveals. Reduced-motion preferences are respected.
+## Rules for panels
 
-The landing preview has three fixed Python examples with illustrative output. Create room and Join room are centered primary actions. Enter a room for the real Monaco editor, Yjs synchronization, file controls, private console, AI panel, quality analysis, debug permissions, progress, and video tools.
+The panels still follow the lane contracts in `docs/lanes/` and the test ids in `docs/TESTIDS.md`. Style with the CSS variables
+in `src/studio/studio.css` (`--panel`, `--ink`, `--accent`, `--rule-soft`, ...) and they match the shell.
 
-The editor starts directly below the room bar. The navigation sidebar starts collapsed; the sidebar, console, and learning panel each open and close independently. Drag their dividers or use arrow keys to resize. Panel sizes and visibility are remembered. Focus mode sits beside Samples and temporarily hides the panels, restoring them when exited. On phones, the console and learning panel resize vertically. The exit button explicitly says “Leave room.” Call controls wrap within the learning panel and chat stacks below the video.
+The app is dark only: `theme.ts` keeps the `dark` attribute on `<html>`, and the old toggle is not shown.
 
-Service availability depends on the existing backend configuration. Browser storage is isolated by port; rooms intentionally use the existing API. Create a new room for experimenting.
+## Checks
 
-## Independence
-
-All changes are inside `frontend2/`. Original tracked files match the starting snapshot, including pre-existing user changes. Root scripts and lockfile are unchanged. No branch changes, staging, commits, merges, or pushes were made.
-
-## Validation
-
-```powershell
-npm --prefix frontend2 run build
-node frontend2/verification/check-preview.mjs
-node frontend2/verification/check-call-layout.mjs
+```
+npm run e2e:studio        # landing page, real rooms, every tool, layout and persistence, phones, axe audits
+npm run e2e:call-layout   # the video dock's controls and chat at 260 to 650 px (a labelled fixture, no real call)
+npm run e2e:a11y          # axe audit of every screen
 ```
 
-The browser check needs the API, both frontends, and Microsoft Edge. It creates fresh rooms and checks examples, keyboard dialogs, real room creation, invitations, two-session synchronization, five tool panels, focus mode, resizing, history, mobile/tablet layouts, accessibility, and browser errors. It does not call Gemini or initiate a video session. Results and screenshots are in `verification/`.
-
-The call-layout check uses a labelled markup fixture to verify control and chat geometry at 260–650px panel widths. It does not establish live media connectivity.
-
-The production build separates the landing page from the heavier editor workspace. Monaco and video dependencies still produce a large workspace chunk.
+Screenshots and audit results from `e2e:studio` are written to `<temp>/syncverse-studio`.
