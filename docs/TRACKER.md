@@ -58,12 +58,14 @@ Status values: TODO, DOING, MERGED, BLOCKED. Windows assume a 5:30 pm start (see
 | P-C3 | C | Rahil | Patch preview, Accept or Reject | MUST | TODO | 1.5 | 9:30pm-10:30pm, 11:30pm-12am |  |
 | P-C4 | C | Rahil | Hint mode | SHOULD | TODO | 1.0 | 12am-1am |  |
 | P-C5 | C | Rahil | AI answer check | SHOULD | TODO | 0.5 | 1am-1:30am |  |
-| P-D1 | D | Miti | Permission-gated debug access | MUST | TODO | 2.5 | 6:30pm-9pm |  |
-| P-D2 | D | Miti | Learning events and progress | MUST | TODO | 1.5 | 9pm-10:30pm |  |
-| P-D3 | D | Miti | Samples and seed data | MUST | TODO | 0.5 | 11:30pm-12am |  |
+| P-D1 | D | Miti | Permission-gated debug access | MUST | DONE, API tested; UI untested in browser; needs B's /api/runs/latest for mirror | 2.5 | 6:30pm-9pm |  |
+| P-D2 | D | Miti | Learning events and progress | MUST | DONE, API tested; needs B/C to call logEvent | 1.5 | 9pm-10:30pm |  |
+| P-D3 | D | Miti | Samples and seed data | MUST | DONE (docs/samples/*.py, Samples menu, seed endpoint) | 0.5 | 11:30pm-12am |  |
 | P-D4 | D | Miti | Mentor overview tiles | SHOULD | TODO | 1.5 | 12am-1:30am |  |
 
 ## Log (newest last)
+
+- Lane D (branch lane-d-miti): P-D1..P-D3 built. `node scripts/test-lane-d.mjs` = 12 API checks PASS (grants, 403s, rate limit, seed, observation rule, mentor table). Typecheck and build clean. NOT yet checked in a real browser (modal/banner/mirror UI). Extra routes: GET /api/debug/grants, POST /api/demo/seed and /api/demo/reset. Event `category` from B/C is matched loosely (index/name/syntax/recursion/timeout). NOT done: P-D0 LiveKit keys (needs Miti's account), P-D4 tiles. Grants keep roomCode internally (DebugGrant type unchanged).
 
 - Plan PDFs written (blueprint 33 pages, overnight plan 12 pages).
 - P-A1: root config, shared contracts, manifests, `npm install` done. Continuing with server and web stubs.
