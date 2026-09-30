@@ -7,10 +7,11 @@
 
 ---------------------------------------------------------------------------------------------------
 
-## 1. RESUME HERE  (last updated: 2026-09-30, end of step S5)
+## 1. RESUME HERE  (last updated: 2026-09-30, end of step S6)
 
-- **Current position:** S0-S5 DONE. Every "never cut" Lane B item (P-B1, P-B2, P-B3) is finished and tested. **Next action: S6 (quality analysis SERVER, `server/routes/analyze.ts`, six rules), when Simrit says go.**
-- **Built so far:** `server/routes/run.ts`; `web/src/console/{index.tsx,useRunner.ts,markers.ts,console.css}`; tests `scripts/laneb-run.mjs` (18), `scripts/laneb-parse.mjs` (16), `scripts/laneb-console-e2e.mjs` (16, three real browsers, needs `npm run dev`). Still stubs: `server/routes/analyze.ts`, `web/src/quality/index.tsx`.
+- **Current position:** S0-S6 DONE. **Next action: S7 (Quality PANEL, `web/src/quality/`), when Simrit says go.** After S7 only S8 (more languages, SHOULD), S9 (integration/hardening) and S10 (demo readiness) remain.
+- **Built so far:** `server/routes/run.ts`; `server/routes/analyze.ts`; `web/src/console/{index.tsx,useRunner.ts,markers.ts,console.css}`; tests `scripts/laneb-run.mjs` (18), `scripts/laneb-parse.mjs` (16), `scripts/laneb-analyze.mjs` (31), `scripts/laneb-console-e2e.mjs` (16, needs `npm run dev`). Still a stub: `web/src/quality/index.tsx`.
+- **What S7 can rely on (server, live now):** `POST /api/analyze {source}` (no identity header needed, pure, nothing stored; 400 on bad body) returns `Diagnostic[]` sorted by line then col, at most 200: `{category: formatting|naming|smell|complexity|security, severity: info|warning|error, line, col?, rule, message}`. Rules: `line-too-long`(formatting, warning), `one-letter-name`(naming, info), `deep-nesting`(smell, warning), `magic-number`(smell, info), `bare-except`(smell, warning), `nested-loops`(complexity, info), `dangerous-call`(security, error for eval/exec, warning for os.system/subprocess shell=True/pickle), `hardcoded-secret`(security, warning). Messages are already beginner-friendly one-liners. Analysis takes ~15 ms for 5,000 lines.
 - **For S7 (quality panel):** publish lint markers ONLY through `publishMarkers(editor, 'lint', markers)` from `web/src/console/markers.ts` (merges with the run-error marker in one `setMarkers` call; `setMarkers` replaces everything). Call `publishMarkers(editor, 'lint', [])` on unmount. Note `editor.highlightLine` paints a RED full-line band (`.sv-error-line`, owned by Lane A) and scrolls the line into view; also `useRunner` calls `clearRunMarkers` (which does `highlightLine(null)`) when a new run starts.
 - **Observation for Akshit (Lane A shell, not mine):** at 390 px width the workspace gives the console column 0 px (the fixed 300+ px side dock takes the space); desktop and 820 px tablet are fine. Only matters if the demo is on a phone.
 - **What S4 can rely on (RunResult fields the server now fills):** `status`, `stdout`, `stderr`, `compileOutput`, `timeMs`, `memoryKb`, and for failures `errorLine` (1-based, only when it is inside the program) + `errorMessage` (e.g. `IndexError: list index out of range`; for `timeout` the message is "Time limit exceeded (5 s). Check for an infinite loop." with NO errorLine; for `memory_limit` "Memory limit exceeded (128 MB)."). `service_error` runs carry the friendly reason in `stderr`. A run is `queued` -> `running` -> terminal; poll `GET /api/run/:id`. `GET /api/run-info` -> `{runner:'judge0'|'local', sandboxed, languages:['python']}`. Expected latency on the public Judge0: ~1.5-2.5 s (timeout case ~6.5 s). POST errors: 400 (bad input, body `{error}`), 401, 429 (`{error}` friendly text), all via `ApiError` (`err.status`, `err.body.error`).
@@ -96,7 +97,7 @@ Status values: TODO, DOING, DONE, BLOCKED. "Plan ID" = task ID in the overnight 
 | S3 | (P-B1/B3) | MUST | Python traceback parser -> errorLine/errorMessage (in run.ts) | **DONE** (16/16 unit, 18/18 Judge0, 18/18 local) | S2 |
 | S4 | P-B2 | MUST | Console panel (Run, Ctrl+Enter, stdin, tabs, badge, last 5, lock, setLastRun) | **DONE** (12/12 three-user e2e) | S2 (S3 for error rows) |
 | S5 | P-B3 | MUST | Error line marking + click to jump | **DONE** (16/16 console e2e) | S3, S4 |
-| S6 | P-B4 | MUST | Quality analysis server `analyze.ts` (six rules) | TODO | S0 |
+| S6 | P-B4 | MUST | Quality analysis server `analyze.ts` (six rules) | **DONE** (31/31) | S0 |
 | S7 | P-B4 | MUST | Quality panel (grouped, click-to-jump, markers, 1.5 s debounce) | TODO | S6, S5 (marker merge) |
 | S8 | P-B5 | SHOULD | More languages: C, C++, Java, JavaScript | TODO | S2-S5 green |
 | S9 | - | - | Integration + hardening + full regression + edge cases | TODO | S2-S7 |
@@ -231,7 +232,24 @@ TESTS: starter program run -> marker + highlight on line 4, clicking the error r
 DONE WHEN (plan): the off-by-one IndexError sample marks the correct line.
 LEFT: everything.
 
-### S6 - P-B4 Quality analysis (server)  -> TODO
+### S6 - P-B4 Quality analysis (server)  -> DONE (2026-09-30)
+DONE (`server/routes/analyze.ts`, exports `analyze(source)` and `router`; nothing else edited except the tracker):
+- [x] `POST /api/analyze` (zod, source <= 100,000 chars, 400 otherwise) -> `Diagnostic[]`, sorted, capped at 200.
+- [x] Approach: a small scanner blanks string contents and comments (same line numbers and columns, quotes kept, triple-quoted strings and escapes handled, unterminated strings end at the line end), then rules run on the blanked text; multi-line statements (open brackets / backslash) are joined into logical lines. So `"eval(x)"`, numbers or `except:` inside strings, docstrings and comments never trigger (tested).
+- [x] Rules and exact behaviour:
+  - `line-too-long`: raw line > 100 characters (comments and strings count), col 101.
+  - `one-letter-name`: single-letter assignment targets (tuple, augmented, annotated), function names and parameters (also on multi-line `def`). Exempt: `for`/comprehension variables, `with ... as f`, `_`, attributes (`self.x`), keyword arguments. Reported once per name (first use). `l`, `O`, `I` get a "looks like 1 or 0" message.
+  - `deep-nesting`: a control block (if/elif/else/for/while/try/except/finally/with) at level > 3; counted inside the current function/class only; tabs expand to 4; one-line `if x: y` is not a block. Each too-deep opener line is reported.
+  - `magic-number`: numbers used in arithmetic/comparison (`* 86400`, `> 18`, `% 15`, `* 3.14159`, `-= 50`). Not flagged: whole numbers 0-10 and 0.5 (so FizzBuzz `% 3` and `/ 2` are quiet), plain data (`[3, 4, 5]`, `x = 42`), unary minus, `NAMED_CONSTANT = 100`, default arguments.
+  - `bare-except`: `except:` with no type.
+  - `nested-loops` (complexity): a for/while inside another loop in the same function; message says roughly n x n (O(n^2)); depth 3+ says "n to the power 3".
+  - `dangerous-call` (security): `eval(`/`exec(` = error (not `obj.eval()` and not `def eval`); `os.system(`, `subprocess... shell=True`, `pickle.load(s)` = warning.
+  - `hardcoded-secret` (security, warning): `password/secret/api_key/token = "literal"`; not env lookups, not in comments.
+- [x] Tests `node --import tsx scripts/laneb-analyze.mjs` 31/31: the plan sample gives all five categories (`one-letter-name@2, nested-loops@4, magic-number@5, dangerous-call@10, line-too-long@11`); the room starter (IndexError sample) and clean code give ZERO findings; false-positive traps; each rule both ways; CRLF; tabs; multi-line def; broken code never throws; cap 200 + sorted; 100,000-char line and binary junk in 15 ms; 5,000 lines in ~16 ms; the HTTP endpoint (shape, 400s, empty -> []).
+- Realistic programs eyeballed (FizzBuzz, class, fib, grades, bubble sort, a deliberately bad program): no noise on good code; bubble sort gets the O(n^2) note. One tuning decision came from this: small whole numbers 0-10 are exempt from `magic-number` (FizzBuzz would otherwise show 3 pedantic findings).
+- Not done on purpose: `LearningEvent` type `'lint'` is NOT logged (the panel would spam it on every keystroke pause). Decide in S7 whether to log only on the explicit "Analyze now" button (needs a tiny `POST /api/analyze?log=1`-style hook; Lane D has not asked).
+LEFT: nothing for S6. The five-dimension maintainability summary (blueprint) is optional for S7.
+Original plan for reference:
 File: `server/routes/analyze.ts`. `POST /api/analyze {source}` -> `Diagnostic[]` (zod, source cap ~100 KB, sorted by line, cap ~200 findings, pure function, fast).
 Six rules (Python, regex + indentation heuristics; strip strings and comments before pattern matching to avoid false positives; use the ORIGINAL line numbers):
 1. `line-too-long`  formatting, warning: line over 100 chars.
@@ -345,3 +363,4 @@ LEFT: everything.
 - 2026-09-30 S3: added exceptionLine/parsePythonError/annotateError to run.ts. Unit tests 16/16 first time; laneb-run extended with real error-line assertions: 18/18 on Judge0 and local. Typecheck clean. Committed and pushed as P-B3(server)... see git log.
 - 2026-09-30 S4: built console panel (index.tsx, useRunner.ts, console.css). Typecheck clean first time. First e2e run failed only in the 390 px session (shell gives the console 0 width; Lane A's layout, not a bug in the panel); replaced with an 820 px check. Made the double-press test rigorous (assert no 429 notice). Final: 12/12 console e2e, regression suites green. Committed and pushed.
 - 2026-09-30 S5: wrote markers.ts and wired it. Three bugs found by the browser test and screenshots, all fixed: marker missing after reload (editor text not synced yet); error row below the fold and output pane growing past the console (layout); noisy Judge0 'Exited with error status 1' line. Two test-only mistakes fixed (Monaco puts the highlight `top` on the parent; focus stayed in the console). Final 16/16 console e2e, all regressions green. Committed and pushed.
+- 2026-09-30 S6: wrote analyze.ts (scanner + 8 rules). 3 test failures on the first run were all wrong test expectations (variables named s/t are themselves one-letter names; wrong line number; sort order); analyzer logic was right. Reviewing output on realistic programs led to exempting small whole numbers from magic-number. Final 31/31; typecheck clean; smoke 8/8; laneb-run 18/18. Committed and pushed.
