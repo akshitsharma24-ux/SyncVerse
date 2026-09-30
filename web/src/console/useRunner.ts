@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RunResult } from '@syncverse/shared';
 import { api, ApiError } from '../api';
 import { useEditor, useSessionUser, useWorkspace } from '../session';
+import type { Lang } from './language';
 import { clearRunMarkers, markRunError, revalidateRunMarker } from './markers';
 
 export interface RunInfo {
@@ -113,7 +114,7 @@ export function useRunner() {
   );
 
   const run = useCallback(
-    async (stdin: string) => {
+    async (stdin: string, language: Lang) => {
       if (busyRef.current) return;
       const source = editor.getValue();
       if (!source.trim()) {
@@ -124,7 +125,7 @@ export function useRunner() {
       setBusy(true);
       setNotice(null);
       try {
-        const { id } = await api.post<{ id: string }>('/api/run', { roomCode: me.roomCode, language: 'python', source, stdin });
+        const { id } = await api.post<{ id: string }>('/api/run', { roomCode: me.roomCode, language, source, stdin });
         clearRunMarkers(editor); // the server accepted a new run: the old error marker is out of date
         await follow(id);
       } catch (e) {

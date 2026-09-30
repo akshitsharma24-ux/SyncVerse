@@ -9,6 +9,7 @@ import { api } from '../api';
 import { useEditor, useSessionUser } from '../session';
 import { apiMessage } from '../console/useRunner';
 import { flashLine, publishMarkers } from '../console/markers';
+import { useLanguage } from '../console/language';
 import './quality.css';
 
 const QUIET_MS = 1500;
@@ -42,6 +43,7 @@ type Phase = 'idle' | 'waiting' | 'analyzing';
 export function QualityPanel() {
   const editor = useEditor();
   const me = useSessionUser();
+  const supported = useLanguage() === 'python'; // the checks are Python rules
   const [findings, setFindings] = useState<Diagnostic[] | null>(null); // null = nothing analysed yet
   const [phase, setPhase] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +95,18 @@ export function QualityPanel() {
   // Watch the text (EditorHandle has no change event): after QUIET_MS without a change, analyse.
   useEffect(() => {
     alive.current = true;
+    if (!supported) {
+      // The analyzer only understands Python: clear everything and do not send anything.
+      seq.current++;
+      seen.current = null;
+      setFindings(null);
+      setError(null);
+      setPhase('idle');
+      publishMarkers(editor, 'lint', []);
+      return () => {
+        alive.current = false;
+      };
+    }
     const poll = setInterval(() => {
       const text = editor.getValue();
       if (text === seen.current) return;
@@ -103,11 +117,12 @@ export function QualityPanel() {
     }, POLL_MS);
     return () => {
       alive.current = false;
+      seq.current++; // a response that is still on its way belongs to the old effect: ignore it
       clearInterval(poll);
       if (timer.current) clearTimeout(timer.current);
       publishMarkers(editor, 'lint', []);
     };
-  }, [editor, analyze]);
+  }, [editor, analyze, supported]);
 
   const analyzeNow = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -124,6 +139,16 @@ export function QualityPanel() {
         : checkedAt
           ? `Checked ${new Date(checkedAt).toLocaleTimeString([], { hour12: false })}`
           : '';
+
+  if (!supported) {
+    return (
+      <div className="q" data-testid="quality-panel">
+        <div className="q-empty" data-testid="quality-unsupported">
+          Quality checks cover Python only for now. Set the console language back to Python to see them.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="q" data-testid="quality-panel">

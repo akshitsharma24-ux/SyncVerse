@@ -8,6 +8,7 @@ import type { RunResult, RunStatus } from '@syncverse/shared';
 import { useEditor, useSessionUser } from '../session';
 import { useRunner } from './useRunner';
 import { flashLine } from './markers';
+import { ALL_LANGUAGES, LANGUAGE_LABEL, setLanguage, useLanguage, type Lang } from './language';
 import './console.css';
 
 type Tone = 'ok' | 'danger' | 'warn' | 'muted' | 'ink';
@@ -45,8 +46,15 @@ export function RunPanel() {
   const [tab, setTab] = useState<'out' | 'err'>('out');
   const [elapsed, setElapsed] = useState(0);
   const root = useRef<HTMLDivElement>(null);
+  // Only offer what this server can run (Judge0: five languages; the local demo runner: Python and JavaScript).
+  const chosen = useLanguage();
+  const available: Lang[] = info ? ALL_LANGUAGES.filter((l) => info.languages.includes(l)) : ['python'];
+  const language: Lang = available.includes(chosen) ? chosen : 'python';
+  useEffect(() => {
+    if (info && chosen !== language) setLanguage(language); // the saved choice is not available here: go back to Python
+  }, [info, chosen, language]);
   const runRef = useRef(() => {});
-  runRef.current = () => void run(stdin);
+  runRef.current = () => void run(stdin, language);
 
   const viewed: RunResult | undefined = runs.find((r) => r.id === selectedId) ?? runs[0];
   const errText = viewed ? [viewed.compileOutput, viewed.stderr].filter(Boolean).join('\n') : '';
@@ -111,7 +119,23 @@ export function RunPanel() {
               </svg>
               {busy ? 'Running…' : 'Run'}
             </button>
-            <span className="eyebrow">Ctrl+Enter</span>
+            <span className="eyebrow hide-sm">Ctrl+Enter</span>
+            {available.length > 1 && (
+              <select
+                className="input rc-lang"
+                aria-label="Language to run"
+                data-testid="run-language"
+                value={language}
+                disabled={busy}
+                onChange={(e) => setLanguage(e.target.value as Lang)}
+              >
+                {available.map((l) => (
+                  <option key={l} value={l}>
+                    {LANGUAGE_LABEL[l]}
+                  </option>
+                ))}
+              </select>
+            )}
             {badge && (
               <span
                 className="rc-badge"
@@ -140,6 +164,11 @@ export function RunPanel() {
             spellCheck={false}
             maxLength={10000}
           />
+          {language !== 'python' && (
+            <div className="rc-hint" data-testid="run-language-hint">
+              Running as {LANGUAGE_LABEL[language]}. Editor colours stay Python for now.
+            </div>
+          )}
         </div>
 
         <div className="rc-right">
@@ -169,7 +198,7 @@ export function RunPanel() {
                     data-testid="run-history-item"
                     data-tone={STATUS[r.status].tone}
                     aria-pressed={r.id === viewed?.id}
-                    title={`${STATUS[r.status].label}${r.stdin ? ` · input: ${r.stdin.slice(0, 40)}` : ''}`}
+                    title={`${LANGUAGE_LABEL[r.language as Lang] ?? r.language} · ${STATUS[r.status].label}${r.stdin ? ` · input: ${r.stdin.slice(0, 40)}` : ''}`}
                     onClick={() => setSelectedId(r.id)}
                   >
                     <i />

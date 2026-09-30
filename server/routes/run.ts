@@ -34,7 +34,9 @@ const MAX_PER_10_MIN = Number(process.env.RUN_MAX_PER_10_MIN ?? 30);
 const MAX_IN_FLIGHT = 2;
 const KEEP_RUNS_PER_USER = 200;
 
-const LANGUAGES = ['python'] as const; // P-B5 adds c | cpp | java | javascript
+const LANGUAGES = ['python', 'c', 'cpp', 'java', 'javascript'] as const;
+type Lang = (typeof LANGUAGES)[number];
+const LANGUAGE_LABEL: Record<Lang, string> = { python: 'Python', c: 'C', cpp: 'C++', java: 'Java', javascript: 'JavaScript' };
 
 // ---- storage (in memory, resets on restart) ---------------------------------------------------
 const runs = new Map<string, RunResult>();
@@ -128,20 +130,154 @@ export function parsePythonError(stderr: string, source: string): { line?: numbe
   return { line, message };
 }
 
+// ---- error parsing for the other languages (P-B5) -----------------------------------------------------------
+type Parsed = { line?: number; message?: string };
+
+const sourceLines = (source: string) => source.replace(/\r\n/g, '\n').split('\n');
+const inRange = (line: number | undefined, source: string) =>
+  line !== undefined && line >= 1 && line <= sourceLines(source).length ? line : undefined;
+
+/** Node.js: the first `script.js:LINE` in the output is where the error happened (works for syntax errors too). */
+export function parseNodeError(stderr: string, source: string): Parsed {
+  const m = /script\.js:(\d+)/.exec(stderr);
+  return { line: inRange(m ? Number(m[1]) : undefined, source), message: exceptionLine(stderr)?.slice(0, 300) };
+}
+
+/** gcc / g++ compile output: the first `main.c:LINE:COL: error: ...`. */
+export function parseGccError(output: string, source: string): Parsed {
+  const m = /^(?:\S*\/)?main\.(?:c|cpp):(\d+):(\d+): (?:fatal )?error: (.+)$/m.exec(output);
+  if (!m) {
+    const link = /undefined reference to [`'](\w+)'/.exec(output);
+    if (link) return { message: `error: undefined reference to '${link[1]}' (the function is used but never defined or linked)` };
+    const any = /^.*\berror\b.*$/m.exec(output);
+    return { message: any ? any[0].trim().slice(0, 300) : undefined };
+  }
+  let line = Number(m[1]);
+  const col = Number(m[2]);
+  const message = m[3];
+  // gcc reports a missing ';' at the START of the next line. If the error token begins its line, blame the previous statement.
+  if (/^expected .*[;,)].* before /.test(message) || /^expected ';'/.test(message)) {
+    const lines = sourceLines(source);
+    if (col === (lines[line - 1] ?? '').search(/\S/) + 1) {
+      let p = line - 2;
+      while (p >= 0 && !lines[p].trim()) p--;
+      if (p >= 0) line = p + 1;
+    }
+  }
+  return { line: inRange(line, source), message: `error: ${message}`.slice(0, 300) };
+}
+
+/** javac compile output: the first `Main.java:LINE: error: ...`. */
+export function parseJavacError(output: string, source: string): Parsed {
+  const m = /^Main\.java:(\d+): error: (.+)$/m.exec(output);
+  return m ? { line: inRange(Number(m[1]), source), message: `error: ${m[2]}`.slice(0, 300) } : {};
+}
+
+/** Java exception: `Exception in thread "main" java.lang.X: msg` and the first `(Main.java:N)` stack frame (the student's code). */
+export function parseJavaRuntimeError(stderr: string, source: string): Parsed {
+  const head = /Exception in thread "[^"]*" ([\w.$]+)(?:: (.*))?/.exec(stderr);
+  const frame = /\(Main\.java:(\d+)\)/.exec(stderr);
+  const name = head ? head[1].split('.').pop() : undefined;
+  return {
+    line: inRange(frame ? Number(frame[1]) : undefined, source),
+    message: name ? `${name}${head?.[2] ? ': ' + head[2] : ''}`.slice(0, 300) : undefined,
+  };
+}
+
+type NativeCrash = { kind: string; message: string };
+/** C / C++ crashes arrive as a shell line such as "Segmentation fault (core dumped)"; explain them in plain words. */
+export function describeNativeCrash(stderr: string): NativeCrash | undefined {
+  const thrown = /terminate called after throwing an instance of '([^']+)'(?:\s*what\(\):\s*(.*))?/.exec(stderr);
+  if (thrown)
+    return {
+      kind: 'UncaughtException',
+      message: `Uncaught C++ exception ${thrown[1]}${thrown[2] ? ': ' + thrown[2].trim() : ''}`,
+    };
+  if (/Segmentation fault/.test(stderr)) {
+    return {
+      kind: 'SegmentationFault',
+      message: 'Segmentation fault: the program used memory it should not (check array indexes and pointers).',
+    };
+  }
+  if (/Floating point exception/.test(stderr))
+    return { kind: 'ArithmeticError', message: 'Arithmetic error: most likely a division by zero.' };
+  if (/Aborted/.test(stderr))
+    return { kind: 'Abort', message: 'The program aborted (a failed assert(), an uncaught exception, or bad memory handling).' };
+  if (/Bus error/.test(stderr)) return { kind: 'BusError', message: 'Bus error: the program accessed memory in an invalid way.' };
+  return undefined;
+}
+
 /** Sets errorLine / errorMessage on a finished failed run. */
 function annotateError(run: RunResult): void {
-  if (run.status === 'timeout') run.errorMessage = 'Time limit exceeded (5 s). Check for an infinite loop.';
-  else if (run.status === 'memory_limit') run.errorMessage = 'Memory limit exceeded (128 MB).';
-  else if (run.status === 'runtime_error' || run.status === 'compile_error') {
-    const { line, message } = parsePythonError(run.stderr, run.source);
-    run.errorLine = line;
-    run.errorMessage = message;
+  if (run.status === 'timeout') {
+    run.errorMessage = 'Time limit exceeded (5 s). Check for an infinite loop.';
+    return;
   }
+  if (run.status === 'memory_limit') {
+    run.errorMessage = 'Memory limit exceeded (128 MB).';
+    return;
+  }
+  if (run.status !== 'runtime_error' && run.status !== 'compile_error') return;
+  const compile = run.status === 'compile_error';
+  let parsed: Parsed;
+  switch (run.language as Lang) {
+    case 'javascript':
+      parsed = parseNodeError(run.stderr, run.source);
+      break;
+    case 'java':
+      parsed = compile ? parseJavacError(run.compileOutput, run.source) : parseJavaRuntimeError(run.stderr, run.source);
+      break;
+    case 'c':
+    case 'cpp':
+      parsed = compile ? parseGccError(run.compileOutput, run.source) : { message: describeNativeCrash(run.stderr)?.message };
+      break;
+    default: {
+      const p = parsePythonError(run.stderr, run.source);
+      parsed = { line: p.line, message: p.message };
+    }
+  }
+  run.errorLine = parsed.line;
+  run.errorMessage = parsed.message;
+}
+
+/** The error category sent to the progress page (Lane D groups these): exception name, or a fixed word. */
+function categoryOf(run: RunResult): string {
+  if (run.status === 'success') return 'success';
+  if (run.status === 'timeout' || run.status === 'memory_limit') return run.status;
+  switch (run.language as Lang) {
+    case 'java':
+      return run.status === 'compile_error' ? 'compile_error' : (run.errorMessage?.split(':')[0] ?? run.status);
+    case 'c':
+    case 'cpp':
+      return run.status === 'compile_error' ? 'compile_error' : (describeNativeCrash(run.stderr)?.kind ?? run.status);
+    default:
+      return errorKind(run.stderr) ?? run.status;
+  }
+}
+
+/**
+ * Java's runner saves the file as Main.java, so `public class Foo` cannot compile. Rename the class that holds main() to Main
+ * (identifiers only, never text inside strings or comments) and tell the student.
+ */
+export function prepareJava(source: string): { source: string; note?: string } {
+  const mainAt = source.search(/public\s+static\s+void\s+main\s*\(/);
+  if (mainAt < 0) return { source };
+  // The class to rename: the public top-level class (Java allows one), else the last top-level class before main().
+  // Nested classes (`static class Node`) are not top-level and are left alone.
+  const publicClass = /\bpublic\s+(?:final\s+|abstract\s+)*class\s+([A-Za-z_$][\w$]*)/.exec(source);
+  const topLevel = [...source.slice(0, mainAt).matchAll(/^(?:final\s+|abstract\s+)*class\s+([A-Za-z_$][\w$]*)/gm)];
+  const name = publicClass ? publicClass[1] : topLevel.length ? topLevel[topLevel.length - 1][1] : undefined;
+  if (!name || name === 'Main' || /\bclass\s+Main\b/.test(source)) return { source };
+  const token = /("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\/\/[^\n]*|\/\*[\s\S]*?\*\/)|([A-Za-z_$][\w$]*)/g;
+  const renamed = source.replace(token, (m: string, skip: string | undefined, ident: string | undefined) =>
+    !skip && ident === name ? 'Main' : m,
+  );
+  return { source: renamed, note: `Note: your class ${name} was renamed to Main so it can run here.\n` };
 }
 
 // ---- runner interface ----------------------------------------------------------------------------
 interface ExecInput {
-  language: (typeof LANGUAGES)[number];
+  language: Lang;
   source: string;
   stdin: string;
 }
@@ -182,16 +318,42 @@ async function j0<T>(pathAndQuery: string, init?: RequestInit): Promise<T> {
   }
 }
 
-// Judge0 language ids differ between instances, so read GET /languages once and map by name.
-let languageIds: Promise<Record<string, number>> | null = null;
+// Judge0 language ids differ between instances, so read GET /languages once and map by name (newest version wins;
+// Python prefers 3.12 because its error messages are the most helpful to beginners and stable to parse).
+const NAME_PATTERN: Record<Lang, RegExp> = {
+  python: /^Python \(3\./,
+  c: /^C \(GCC/,
+  cpp: /^C\+\+ \(GCC/,
+  java: /^Java \(/,
+  javascript: /^JavaScript \(Node/,
+};
+const FALLBACK_ID: Record<Lang, number> = { python: 71, c: 50, cpp: 54, java: 62, javascript: 63 };
+const COMPILER_OPTIONS: Partial<Record<Lang, string>> = { c: '-Wall -Wextra -lm', cpp: '-Wall -Wextra' }; // -lm: math.h functions need it in C
 
-function loadLanguageIds(): Promise<Record<string, number>> {
+const versionOf = (name: string): number[] => (/\(([^)]*)\)/.exec(name)?.[1].match(/\d+/g) ?? []).map(Number);
+function newestFirst(a: { name: string }, b: { name: string }): number {
+  const va = versionOf(a.name);
+  const vb = versionOf(b.name);
+  for (let i = 0; i < Math.max(va.length, vb.length); i++) if ((va[i] ?? 0) !== (vb[i] ?? 0)) return (vb[i] ?? 0) - (va[i] ?? 0);
+  return 0;
+}
+
+/** Exported for tests: picks one id per language from a Judge0 /languages list. */
+export function pickLanguageIds(list: { id: number; name: string }[]): Record<Lang, number> {
+  const ids = { ...FALLBACK_ID };
+  for (const lang of LANGUAGES) {
+    const matches = list.filter((l) => NAME_PATTERN[lang].test(l.name)).sort(newestFirst);
+    const pick = lang === 'python' ? (matches.find((l) => l.name.startsWith('Python (3.12')) ?? matches[0]) : matches[0];
+    if (pick) ids[lang] = pick.id;
+  }
+  return ids;
+}
+
+let languageIds: Promise<Record<Lang, number>> | null = null;
+
+function loadLanguageIds(): Promise<Record<Lang, number>> {
   if (!languageIds) {
-    languageIds = j0<{ id: number; name: string }[]>('/languages').then((list) => {
-      const py = list.filter((l) => /^Python \(3\./.test(l.name));
-      const pick = py.find((l) => l.name.startsWith('Python (3.12')) ?? py.sort((a, b) => b.name.localeCompare(a.name))[0];
-      return { python: pick?.id ?? 71 };
-    });
+    languageIds = j0<{ id: number; name: string }[]>('/languages').then(pickLanguageIds);
     languageIds.catch(() => {
       languageIds = null; // do not cache a failure
     });
@@ -238,6 +400,7 @@ async function executeJudge0(input: ExecInput, onRunning: () => void): Promise<E
       cpu_time_limit: CPU_LIMIT_S,
       wall_time_limit: WALL_LIMIT_S,
       memory_limit: MEMORY_LIMIT_KB,
+      ...(COMPILER_OPTIONS[input.language] ? { compiler_options: COMPILER_OPTIONS[input.language] } : {}),
     }),
   });
   if (!created.token) throw new ServiceError('The code runner did not accept the submission.');
@@ -247,7 +410,8 @@ async function executeJudge0(input: ExecInput, onRunning: () => void): Promise<E
     await sleep(POLL_MS);
     const s = await j0<Judge0Submission>(`/submissions/${created.token}?base64_encoded=true`);
     if (s.status.id <= 2) continue;
-    const stderr = clean(unb64(s.stderr));
+    // C / C++ crashes come wrapped by the runner's shell script ("run.sh: line 1:  3 Segmentation fault ..."); drop the wrapper.
+    const stderr = clean(unb64(s.stderr)).replace(/^run\.sh: line \d+:\s+\d+\s+/gm, '');
     const memoryKb = typeof s.memory === 'number' ? s.memory : undefined;
     const status = mapJudge0Status(s.status.id, stderr, memoryKb);
     if (status === 'service_error') throw new ServiceError(`The code runner failed (${s.status.description}). Try again.`);
@@ -265,10 +429,26 @@ async function executeJudge0(input: ExecInput, onRunning: () => void): Promise<E
 }
 
 // Local fallback: NOT sandboxed. Only used when JUDGE0_URL is empty or RUNNER=local. Keeps secrets out of the child's env.
+const LOCAL_RUNNERS: Partial<Record<Lang, { file: string; command: () => string; args: string[] }>> = {
+  python: {
+    file: 'script.py',
+    command: () => process.env.PYTHON_BIN ?? (process.platform === 'win32' ? 'python' : 'python3'),
+    args: ['-X', 'utf8', '-I', 'script.py'],
+  },
+  javascript: { file: 'script.js', command: () => process.execPath, args: ['script.js'] },
+};
+
+/** Languages this server can run right now: all five through Judge0, only Python and JavaScript through the local runner. */
+export function availableLanguages(): readonly Lang[] {
+  return useJudge0() ? LANGUAGES : (Object.keys(LOCAL_RUNNERS) as Lang[]);
+}
+
 function executeLocal(input: ExecInput): Promise<ExecOutcome> {
-  const py = process.env.PYTHON_BIN ?? (process.platform === 'win32' ? 'python' : 'python3');
+  const runner = LOCAL_RUNNERS[input.language];
+  if (!runner)
+    return Promise.reject(new ServiceError(`${LANGUAGE_LABEL[input.language]} is not available on this server's demo runner.`));
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sv-run-'));
-  fs.writeFileSync(path.join(dir, 'script.py'), input.source, 'utf8');
+  fs.writeFileSync(path.join(dir, runner.file), input.source, 'utf8');
   const env: NodeJS.ProcessEnv = {};
   for (const k of ['PATH', 'Path', 'SystemRoot', 'TEMP', 'TMP', 'HOME']) if (process.env[k]) env[k] = process.env[k];
   return new Promise((resolve, reject) => {
@@ -284,7 +464,7 @@ function executeLocal(input: ExecInput): Promise<ExecOutcome> {
       fs.rmSync(dir, { recursive: true, force: true });
       fn();
     };
-    const child = spawn(py, ['-X', 'utf8', '-I', 'script.py'], { cwd: dir, env, windowsHide: true });
+    const child = spawn(runner.command(), runner.args, { cwd: dir, env, windowsHide: true });
     const timer = setTimeout(() => {
       timedOut = true;
       child.kill('SIGKILL');
@@ -297,14 +477,16 @@ function executeLocal(input: ExecInput): Promise<ExecOutcome> {
     });
     child.stdin.on('error', () => undefined); // program may exit without reading stdin
     child.stdin.end(input.stdin);
-    child.on('error', () => finish(() => reject(new ServiceError('Python could not be started on the server.'))));
+    child.on('error', () =>
+      finish(() => reject(new ServiceError(`${LANGUAGE_LABEL[input.language]} could not be started on the server.`))),
+    );
     child.on('close', (code) =>
       finish(() => {
         const stderr = clean(err);
         const timeMs = Date.now() - started;
         let status: RunStatus = 'success';
         if (timedOut) status = 'timeout';
-        else if (code !== 0) status = /\b(SyntaxError|IndentationError|TabError)\b/.test(stderr) ? 'compile_error' : 'runtime_error';
+        else if (code !== 0) status = mapJudge0Status(11, stderr); // same rule as Judge0: syntax errors are compile errors, the rest runtime
         resolve({ status, stdout: clean(out), stderr, compileOutput: '', timeMs });
       }),
     );
@@ -313,13 +495,16 @@ function executeLocal(input: ExecInput): Promise<ExecOutcome> {
 
 // ---- pipeline ----------------------------------------------------------------------------------------
 async function processRun(run: RunResult): Promise<void> {
-  const input: ExecInput = { language: run.language as ExecInput['language'], source: run.source, stdin: run.stdin };
+  const language = run.language as Lang;
+  // run.source stays exactly what the student wrote (line numbers are identical after the Java rename).
+  const prepared = language === 'java' ? prepareJava(run.source) : { source: run.source, note: undefined };
+  const input: ExecInput = { language, source: prepared.source, stdin: run.stdin };
   try {
     const out = useJudge0() ? await executeJudge0(input, () => void (run.status = 'running')) : await executeLocal(input);
     run.status = out.status;
     run.stdout = capHead(out.stdout, MAX_STDOUT_CHARS);
     run.stderr = capTail(out.stderr, MAX_ERR_CHARS);
-    run.compileOutput = capTail(out.compileOutput, MAX_ERR_CHARS);
+    run.compileOutput = capTail((prepared.note ?? '') + out.compileOutput, MAX_ERR_CHARS);
     run.timeMs = out.timeMs;
     run.memoryKb = out.memoryKb;
   } catch (e) {
@@ -332,8 +517,14 @@ async function processRun(run: RunResult): Promise<void> {
   if (run.status !== 'service_error') {
     try {
       annotateError(run);
-      const kind = run.status === 'success' ? 'success' : run.status === 'timeout' || run.status === 'memory_limit' ? run.status : (errorKind(run.stderr) ?? run.status);
-      logEvent({ userId: run.ownerId, roomCode: run.roomCode, at: Date.now(), type: 'run', category: kind, ok: run.status === 'success' });
+      logEvent({
+        userId: run.ownerId,
+        roomCode: run.roomCode,
+        at: Date.now(),
+        type: 'run',
+        category: categoryOf(run),
+        ok: run.status === 'success',
+      });
     } catch (e) {
       console.error('[run] logEvent failed:', e instanceof Error ? e.message : e);
     }
@@ -352,17 +543,30 @@ export const router = Router();
 
 router.get('/run-info', (_req, res) => {
   const judge0 = useJudge0();
-  res.json({ runner: judge0 ? 'judge0' : 'local', sandboxed: judge0, languages: LANGUAGES });
+  res.json({ runner: judge0 ? 'judge0' : 'local', sandboxed: judge0, languages: availableLanguages() });
 });
 
 router.post('/run', requireUser, (req, res) => {
   const parsed = runBody.safeParse(req.body);
   if (!parsed.success) {
-    const unsupported = req.body && typeof req.body.language === 'string' && !(LANGUAGES as readonly string[]).includes(req.body.language);
-    res.status(400).json({ error: unsupported ? `Language not supported yet (available: ${LANGUAGES.join(', ')}).` : 'Invalid run request.' });
+    const unsupported =
+      req.body && typeof req.body.language === 'string' && !(LANGUAGES as readonly string[]).includes(req.body.language);
+    res
+      .status(400)
+      .json({
+        error: unsupported ? `Language not supported (available: ${availableLanguages().join(', ')}).` : 'Invalid run request.',
+      });
     return;
   }
   const { roomCode, language, source, stdin } = parsed.data;
+  if (!availableLanguages().includes(language)) {
+    res
+      .status(400)
+      .json({
+        error: `${LANGUAGE_LABEL[language]} is not available on this server's demo runner (available: ${availableLanguages().join(', ')}).`,
+      });
+    return;
+  }
   if (Buffer.byteLength(stdin, 'utf8') > MAX_STDIN_BYTES) {
     res.status(400).json({ error: 'Input is too large (limit 10 KB).' });
     return;
