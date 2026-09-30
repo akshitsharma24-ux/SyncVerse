@@ -9,7 +9,7 @@
 - **Entry-page copy describes all six features** (incl. AI explain, debug by invitation, progress, video). They must exist by the demo or the page over-promises; adjust `web/src/landing/Features.tsx` if a lane is cut.
 - **Status in one line:** Lane A (Akshit) MUST tasks P-A1 to P-A4, SHOULD task P-A5 and the extra P-A6 (frontend design) are built and tested. Everything is pushed to https://github.com/akshitsharma24-ux/SyncVerse on branch `lane-a-akshit`; the other lane branches (`lane-b-simrit`, `lane-c-rahil`, `lane-d-miti`) start from the same commit so Simrit, Rahil and Miti can begin.
 - **RESOLVED (was blocker 1):** repo pushed. Everyone: `git clone https://github.com/akshitsharma24-ux/SyncVerse.git`, `git checkout <your lane branch>`, `npm install`, `copy .env.example .env`, `npm run dev`, then start your lane file in `docs/lanes/`. Branch rules are in README and CLAUDE.md.
-- **BLOCKER 2 (Miti, P-D0):** LiveKit Cloud project keys (LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET) into `.env`. Until then the video dock shows its setup hint and the real call is **unverified**.
+- **P-D0 DONE (Miti):** LiveKit Cloud project `SyncVerse` created; keys are in Miti's local `.env` (verified with `node scripts/livekit-token.mjs`). Miti must send the three values to Akshit privately; the real 2-person call is still **unverified**.
 - **Who is working / next for Lane A:** nothing left in Lane A's MUST list. Useful next: (1) once keys exist, test a real 2-person call by hand on two devices and then mark P-A4 verified; (2) help Lane B (Simrit has the least slack): take P-B4 lint rules or P-B5 if asked; (3) after the first integration, fix contract mismatches reported against Lane A.
 - **How to verify everything (dev servers must be running via `npm run dev`):** `npm run typecheck`; `npm run smoke` (8 checks: health, 404, Yjs sync/merge/replaceAll/awareness/room persistence); `npm run e2e` (13 checks, two real Edge sessions: sync, simultaneous typing, presence, typing indicator, cursor label, usePresence, leave detection, refresh persistence, markers); `npm run e2e:video` (2 checks without keys); `npm run e2e:entry` (14 checks incl. toasts, status chip, crash containment, keyboard/skip link: entry page, create/join, invite link, validation, phone/tablet overflow, animated mock, tabs, keyboard resize); `npm run test:persist` (starts its own server on :4101: code survives a hard restart); `npm run e2e:reconnect` (starts its own API :4300 + web :5300, kills the API mid-session: offline pill, offline typing, reconnect, both sides converge, no duplicates); `npm run build`. Last full run: all PASS. If an e2e run stalls at browser launch, just rerun it (seen once, three clean reruns).
 - **Dev servers:** `npm run dev` may be running in the background on this machine (web :5173, API :4000). Servers started from a Claude session are stopped when that session's background limit is hit (the web app was stopped once and restarted as `npm run dev -w web`; the API runs separately as `npm run dev -w server`). Check `http://localhost:5173` and `http://localhost:4000/api/health`; if down, run `npm run dev`. If ports are busy, stop the old process first. Do not kill all node processes: the API server's real process is a child of `tsx watch`.
@@ -72,12 +72,18 @@ Status values: TODO, DOING, MERGED, BLOCKED. Windows assume a 5:30 pm start (see
 | P-C3 | C | Rahil | Patch preview, Accept or Reject | MUST | TODO | 1.5 | 9:30pm-10:30pm, 11:30pm-12am |  |
 | P-C4 | C | Rahil | Hint mode | SHOULD | TODO | 1.0 | 12am-1am |  |
 | P-C5 | C | Rahil | AI answer check | SHOULD | TODO | 0.5 | 1am-1:30am |  |
-| P-D1 | D | Miti | Permission-gated debug access | MUST | TODO | 2.5 | 6:30pm-9pm |  |
-| P-D2 | D | Miti | Learning events and progress | MUST | TODO | 1.5 | 9pm-10:30pm |  |
-| P-D3 | D | Miti | Samples and seed data | MUST | TODO | 0.5 | 11:30pm-12am |  |
+| P-D1 | D | Miti | Permission-gated debug access | MUST | DONE, API tested; UI untested in browser; needs B's /api/runs/latest for mirror | 2.5 | 6:30pm-9pm |  |
+| P-D2 | D | Miti | Learning events and progress | MUST | DONE, API tested; needs B/C to call logEvent | 1.5 | 9pm-10:30pm |  |
+| P-D3 | D | Miti | Samples and seed data | MUST | DONE (docs/samples/*.py, Samples menu, seed endpoint) | 0.5 | 11:30pm-12am |  |
 | P-D4 | D | Miti | Mentor overview tiles | SHOULD | TODO | 1.5 | 12am-1:30am |  |
 
 ## Log (newest last)
+
+- Lane D completion (uncommitted): debug access now has scope (view / assist = mentor can point at a line, owner's editor highlights it), access auto-ends 20 s after the owner disconnects, Reset demo button, 3 more planted bugs (aliasing, ZeroDivision, TypeError), Escape closes Samples, table headers scoped. Tests: test-lane-d.mjs 24 API checks, e2e-lane-d.mjs 16 browser checks, all PASS. Still needs other lanes: assist re-run (B), propose edit (C), real run mirror (B), D-06, D-10, D-12.
+
+- Lane D extras (uncommitted): P-D4 mentor tiles, T-D-09 stuck nudge + help flag, T-D-05 class trends (counts, no names), Block button for debug requests, a11y labels. `test-lane-d.mjs` 16 API checks and `e2e-lane-d.mjs` 13 browser checks PASS. Extra routes: POST /api/help, GET /api/progress/trends, POST /api/debug/:id/block.
+
+- Lane D (branch lane-d-miti): P-D1..P-D3 built. `node scripts/test-lane-d.mjs` = 12 API checks PASS; `node scripts/e2e-lane-d.mjs` = 9 real-browser checks PASS (needs npm run dev) (grants, 403s, rate limit, seed, observation rule, mentor table). Typecheck and build clean. Extra routes: GET /api/debug/grants, POST /api/demo/seed and /api/demo/reset. Event `category` from B/C is matched loosely (index/name/syntax/recursion/timeout). NOT done: P-D0 LiveKit keys (needs Miti's account), P-D4 tiles. Grants keep roomCode internally (DebugGrant type unchanged).
 
 - Plan PDFs written (blueprint 33 pages, overnight plan 12 pages).
 - P-A1: root config, shared contracts, manifests, `npm install` done. Continuing with server and web stubs.
