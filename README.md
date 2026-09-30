@@ -65,10 +65,10 @@ Useful commands (run the checks while `npm run dev` is running, after every merg
 | `npm run build` | production build |
 | `npm run smoke` | server health, Yjs sync/merge/presence/persistence (8 checks) |
 | `npm run e2e` | two real Edge sessions: live editing, cursors, presence, markers (13 checks) |
-| `npm run e2e:entry` | entry page: create/join flow, invite link, validation, phone/tablet layout, animated editor, workspace tabs and resizing (11 checks) |
+| `npm run e2e:entry` | entry page: create/join flow, invite link, validation, phone/tablet layout, animated editor, workspace tabs and resizing, light/dark theme (15 checks) |
 | `npm run e2e:video` | video dock UI (real media needs LiveKit keys and two devices) |
 | `npm run e2e:golden` | the whole demo with three browsers; steps SKIP until a lane's panel exists (`-- --strict` on demo morning) |
-| `npm run e2e:a11y` | axe-core accessibility audit (WCAG A/AA) of the entry page and every workspace tab |
+| `npm run e2e:a11y` | axe-core accessibility audit (WCAG A/AA) of the entry page and every workspace tab, in both light and dark themes |
 | `npm run verify:samples` | runs every planted-bug program with real Python and checks the shared fixtures |
 | `npm run preflight` | demo warm-up: env, ports, live sync, Judge0, LiveKit, LLM (`-- --strict` on demo morning) |
 | `npm run test:persist` | code survives a hard server restart (starts its own server on :4101) |

@@ -42,6 +42,36 @@ monaco.editor.defineTheme('syncverse', {
   },
 });
 
+monaco.editor.defineTheme('syncverse-dark', {
+  base: 'vs-dark',
+  inherit: true,
+  rules: [
+    { token: 'keyword', foreground: 'F08BBD' },
+    { token: 'string', foreground: '8FD9A0' },
+    { token: 'number', foreground: 'F0A060' },
+    { token: 'comment', foreground: '8F8B80', fontStyle: 'italic' },
+    { token: 'identifier', foreground: 'EFECE4' },
+    { token: 'delimiter', foreground: 'A8A397' },
+    { token: 'operator', foreground: 'CFCABD' },
+  ],
+  colors: {
+    'editor.background': '#1D1C19',
+    'editor.foreground': '#EFECE4',
+    'editorLineNumber.foreground': '#6F6B62',
+    'editorLineNumber.activeForeground': '#EFECE4',
+    'editor.lineHighlightBackground': '#24231F',
+    'editor.lineHighlightBorder': '#24231F',
+    'editorCursor.foreground': '#EFECE4',
+    'editor.selectionBackground': '#3C3930',
+    'editor.inactiveSelectionBackground': '#322F28',
+    'editorIndentGuide.background1': '#2D2B27',
+    'editorIndentGuide.activeBackground1': '#4A463E',
+    'editorGutter.background': '#1D1C19',
+    'scrollbarSlider.background': '#38352F99',
+    'scrollbarSlider.hoverBackground': '#6F6B62AA',
+  },
+});
+
 loader.config({ monaco });
 
 export { monaco };

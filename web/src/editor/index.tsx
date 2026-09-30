@@ -11,6 +11,7 @@ import { MonacoBinding } from 'y-monaco';
 import type { EditorHandle, PresenceUser, Role } from '@syncverse/shared';
 import { usePresence, usePresenceSetter, useEditorRegistry, useSessionUser } from '../session';
 import { monaco } from './monaco-setup';
+import { useTheme } from '../theme';
 
 type Status = 'connecting' | 'connected' | 'disconnected';
 
@@ -48,6 +49,7 @@ export function EditorPanel() {
   const register = useEditorRegistry();
   const setPresence = usePresenceSetter();
   const people = usePresence();
+  const theme = useTheme();
   const cleanupRef = useRef<(() => void) | null>(null);
   const [status, setStatus] = useState<Status>('connecting');
   const [synced, setSynced] = useState(false);
@@ -216,7 +218,7 @@ export function EditorPanel() {
           height="100%"
           defaultLanguage="python"
           defaultValue=""
-          theme="syncverse"
+          theme={theme === 'dark' ? 'syncverse-dark' : 'syncverse'}
           onMount={onMount}
           options={{
             minimap: { enabled: false },

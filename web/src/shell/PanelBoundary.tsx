@@ -47,7 +47,7 @@ export class PanelBoundary extends Component<Props, State> {
         );
       }
       return (
-        <div role="alert" data-testid="panel-crash" data-panel={name} style={{ border: '1px solid var(--danger)', borderRadius: 4, padding: 14, background: '#fbeeec' }}>
+        <div role="alert" data-testid="panel-crash" data-panel={name} style={{ border: '1px solid var(--danger)', borderRadius: 4, padding: 14, background: 'var(--danger-bg)' }}>
           <div className="eyebrow" style={{ color: 'var(--danger)' }}>
             panel error · {name}
           </div>

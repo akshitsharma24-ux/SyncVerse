@@ -23,8 +23,72 @@
   --lane-c: #6b4fbb;
   --lane-d: #b8531b;
 
+  /* tokens for things that used to be hard-coded (so dark mode can change them) */
+  --on-ink: #ffffff; /* text on an ink-coloured fill (black buttons, selected segments) */
+  --btn-hover: #2b2b2b;
+  --hover: rgba(21, 21, 21, 0.06);
+  --dim: #85837a; /* the grey second line of the headline (large text) */
+  --bar: #dcd9d0; /* skeleton bars in the feature illustrations */
+  --bar-2: #eadfd6;
+  --tile: #e7e4dc; /* tiles, selected file row */
+  --danger-bg: #fbeeec;
+  --err-bg: rgba(192, 57, 43, 0.12);
+  --overlay: rgba(21, 21, 21, 0.35);
+  --hatch-soft: rgba(21, 21, 21, 0.045);
+  --hatch-mid: rgba(21, 21, 21, 0.08);
+  --hatch-strong: rgba(21, 21, 21, 0.12);
+  --shadow-ide: 0 34px 60px -34px rgba(21, 21, 21, 0.35), 0 2px 0 rgba(21, 21, 21, 0.03);
+  --tok-kw: #b4236b;
+  --tok-fn: #1d4ed8;
+  --tok-num: #b45309;
+  --tok-cm: #8a877e;
+
   --font-sans: 'Geist Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, 'Cascadia Code', Consolas, monospace;
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Dark theme: warm charcoal instead of pure black, same ink-and-hairline character.
+   Switched by <html data-theme="dark">; see web/src/theme.ts. Every text/background pair below keeps WCAG AA.
+   ------------------------------------------------------------------------------------------------ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #121110;
+  --paper-2: #1a1917;
+  --panel: #1d1c19;
+  --ink: #efece4;
+  --ink-2: #cfcabd;
+  --muted: #a8a397;
+  --soft: #6f6b62;
+  --rule: #efece4;
+  --rule-soft: #38352f;
+  --danger: #ff8778;
+  --ok: #58c98b;
+  --warn: #e3b04b;
+
+  --lane-a: #6b9cff;
+  --lane-b: #4cc38a;
+  --lane-c: #a78bfa;
+  --lane-d: #ff9a5c;
+
+  --on-ink: #121110;
+  --btn-hover: #ffffff;
+  --hover: rgba(239, 236, 228, 0.09);
+  --dim: #8a867b;
+  --bar: #3b3933;
+  --bar-2: #4a4038;
+  --tile: #2b2925;
+  --danger-bg: #2b1a17;
+  --err-bg: rgba(255, 135, 120, 0.14);
+  --overlay: rgba(0, 0, 0, 0.62);
+  --hatch-soft: rgba(239, 236, 228, 0.05);
+  --hatch-mid: rgba(239, 236, 228, 0.09);
+  --hatch-strong: rgba(239, 236, 228, 0.15);
+  --shadow-ide: 0 34px 60px -34px rgba(0, 0, 0, 0.75), 0 2px 0 rgba(255, 255, 255, 0.03);
+  --tok-kw: #f08bbd;
+  --tok-fn: #8ab4ff;
+  --tok-num: #f0a060;
+  --tok-cm: #8f8b80;
 }
 
 html,
@@ -77,14 +141,14 @@ input {
   border-radius: 3px;
   border: 1px solid var(--ink);
   background: var(--ink);
-  color: #fff;
+  color: var(--on-ink);
   font-size: 13.5px;
   font-weight: 500;
   letter-spacing: -0.005em;
   transition: transform 0.12s ease, background 0.12s ease;
 }
 .btn:hover {
-  background: #2b2b2b;
+  background: var(--btn-hover);
 }
 .btn:active {
   transform: translateY(1px);
@@ -98,7 +162,7 @@ input {
   color: var(--ink);
 }
 .btn-outline:hover {
-  background: rgba(21, 21, 21, 0.06);
+  background: var(--hover);
 }
 .btn-sm {
   height: 28px;
@@ -141,6 +205,9 @@ input {
   -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 22%, transparent 78%, #000 100%);
   mask-image: linear-gradient(90deg, #000 0%, transparent 22%, transparent 78%, #000 100%);
 }
+:root[data-theme='dark'] .plusgrid::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Cpath d='M15 12v6M12 15h6' stroke='%2338352f' stroke-width='1'/%3E%3C/svg%3E");
+}
 
 /* ---------- entry page ---------- */
 .headline {
@@ -151,7 +218,7 @@ input {
   margin: 0;
 }
 .headline .dim {
-  color: #85837a;
+  color: var(--dim);
 }
 
 .seg {
@@ -176,7 +243,7 @@ input {
 }
 .seg button[aria-pressed='true'] {
   background: var(--ink);
-  color: #fff;
+  color: var(--on-ink);
 }
 
 .field {
@@ -200,7 +267,8 @@ input {
   font-size: 14px;
 }
 .input::placeholder {
-  color: #aaa79e;
+  color: var(--muted);
+  opacity: 0.75;
 }
 .input.code {
   font-family: var(--font-mono);
@@ -273,7 +341,7 @@ input {
   border-radius: 10px;
   background: var(--panel);
   overflow: hidden;
-  box-shadow: 0 34px 60px -34px rgba(21, 21, 21, 0.35), 0 2px 0 rgba(21, 21, 21, 0.03);
+  box-shadow: var(--shadow-ide);
   font-family: var(--font-mono);
   font-size: 12.5px;
 }
@@ -289,27 +357,27 @@ input {
   white-space: pre;
 }
 .ide-line > i {
-  color: #b8b5ab;
+  color: var(--soft);
   font-style: normal;
   text-align: right;
   padding-right: 14px;
   user-select: none;
 }
 .ide-line.err {
-  background: rgba(192, 57, 43, 0.12);
+  background: var(--err-bg);
   box-shadow: inset 3px 0 0 var(--danger);
 }
 .tok-kw {
-  color: #b4236b;
+  color: var(--tok-kw);
 }
 .tok-fn {
-  color: #1d4ed8;
+  color: var(--tok-fn);
 }
 .tok-num {
-  color: #b45309;
+  color: var(--tok-num);
 }
 .tok-cm {
-  color: #8a877e;
+  color: var(--tok-cm);
   font-style: italic;
 }
 .cursor {
@@ -495,7 +563,7 @@ input {
 
 /* Editor decorations (Lane A owns the editor; other lanes only call EditorHandle methods). */
 .sv-error-line {
-  background: rgba(192, 57, 43, 0.12);
+  background: var(--err-bg);
   box-shadow: inset 3px 0 0 var(--danger);
 }
 

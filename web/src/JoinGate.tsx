@@ -8,6 +8,7 @@ import type { Role } from '@syncverse/shared';
 import { useSession } from './session';
 import { Logo } from './shell/Logo';
 import { Icon } from './shell/icons';
+import { ThemeToggle } from './shell/ThemeToggle';
 import { HeroMock } from './landing/HeroMock';
 import { Features } from './landing/Features';
 
@@ -74,6 +75,7 @@ export default function JoinGate() {
           <span className="eyebrow">PS 02 · remote STEM education</span>
         </nav>
         <div style={{ display: 'flex', gap: 8 }}>
+          <ThemeToggle />
           <button className="btn btn-outline btn-sm hide-sm" onClick={() => choose('join')}>Join a room</button>
           <button className="btn btn-sm" onClick={() => choose('create')}>Create a room</button>
         </div>

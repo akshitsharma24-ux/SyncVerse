@@ -51,7 +51,7 @@ export function Overview({ people, roomCode, stateOf, onRequest }: {
           return (
             <div key={p.userId} role="group" aria-label={`${p.name}: ${r?.stuck ? 'stuck' : 'no stuck flag'}`} data-testid={`tile-${p.name}`} data-stuck={r?.stuck ? 'true' : 'false'}
               style={{ border: `1px solid ${r?.stuck ? 'var(--ink)' : 'var(--rule-soft)'}`, borderRadius: 4, padding: 8,
-                background: r?.stuck ? 'repeating-linear-gradient(135deg, rgba(21,21,21,0.08) 0 1px, transparent 1px 6px)' : 'transparent' }}>
+                background: r?.stuck ? 'repeating-linear-gradient(135deg, var(--hatch-mid) 0 1px, transparent 1px 6px)' : 'transparent' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 8, background: p.color }} />
                 <b style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</b>

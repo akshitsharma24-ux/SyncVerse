@@ -64,8 +64,7 @@ export function VideoDock() {
         Talk to everyone in room <b>{me.roomCode}</b> without leaving this tab. Your camera and microphone start when you join.
       </div>
       <button
-        className="rounded px-3 py-1.5 font-semibold text-white disabled:opacity-60"
-        style={{ background: 'var(--lane-a)' }}
+        className="btn btn-sm disabled:opacity-60"
         onClick={join}
         disabled={busy}
         data-testid="video-join"
@@ -73,7 +72,7 @@ export function VideoDock() {
         {busy ? 'Connecting...' : 'Join call'}
       </button>
       {error && (
-        <div className="rounded border p-2 text-xs" style={{ borderColor: 'var(--danger)', background: '#fbeeec' }} data-testid="video-error">
+        <div className="rounded border p-2 text-xs" style={{ borderColor: 'var(--danger)', background: 'var(--danger-bg)' }} data-testid="video-error">
           {error}
         </div>
       )}

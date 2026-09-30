@@ -177,6 +177,31 @@ await check('keyboard: the first Tab stop is a skip link that jumps to the edito
   if (!ok) throw new Error('tab and panel are not linked');
 });
 
+await check('theme: first visit follows the system, the toggle switches it, the choice is remembered, and the editor follows', async () => {
+  const lum = (rgb) => rgb.match(/\d+/g).slice(0, 3).map(Number).reduce((a, b) => a + b, 0);
+  const p = await newPage({ colorScheme: 'dark' });
+  await p.goto(BASE);
+  await p.waitForSelector('h1.headline');
+  const html = () => p.getAttribute('html', 'data-theme');
+  const bg = () => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  if ((await html()) !== 'dark') throw new Error('an OS set to dark did not open dark: ' + (await html()));
+  if (lum(await bg()) > 150) throw new Error('dark theme has a light page background: ' + (await bg()));
+  await p.click('[data-testid="theme-toggle"]');
+  if ((await html()) !== 'light' || lum(await bg()) < 500) throw new Error('toggle did not switch to light');
+  await p.reload();
+  await p.waitForSelector('h1.headline');
+  if ((await html()) !== 'light') throw new Error('the choice was not remembered: a reload went back to ' + (await html()) + ' (the OS is dark)');
+  await p.click('[data-testid="theme-toggle"]');
+  if ((await html()) !== 'dark') throw new Error('toggle did not switch back to dark');
+  // the editor follows the theme, in the workspace too
+  await p.goto(`${BASE}/?name=Dee&role=student&room=theme-${Math.random().toString(36).slice(2, 6)}`);
+  await p.waitForSelector('.monaco-editor', { timeout: 20000 });
+  if (!(await p.evaluate(() => document.querySelector('.monaco-editor').classList.contains('vs-dark')))) throw new Error('editor is not dark in dark mode');
+  await p.click('[data-testid="theme-toggle"]');
+  await p.waitForFunction(() => !document.querySelector('.monaco-editor').classList.contains('vs-dark'), null, { timeout: 4000 });
+  await p.context().close();
+});
+
 await check('a crashing panel is contained: only that panel shows an error card, the rest keeps working', async () => {
   const p = await newPage();
   await p.goto(`${BASE}/?name=Crash&role=student&room=crash-${Math.random().toString(36).slice(2, 6)}&crash=ai`);

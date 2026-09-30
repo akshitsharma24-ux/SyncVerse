@@ -6,6 +6,7 @@ import { Logo } from './Logo';
 import { Icon } from './icons';
 import { PanelBoundary } from './PanelBoundary';
 import { StatusChip } from './StatusChip';
+import { ThemeToggle } from './ThemeToggle';
 
 const initials = (name: string) =>
   name
@@ -50,6 +51,7 @@ export function TopBar() {
 
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
         <StatusChip />
+        <ThemeToggle />
         <PanelBoundary name="samples" compact><SamplesMenu /></PanelBoundary>
         <div style={{ display: 'flex', alignItems: 'center' }} aria-label={`${people.length} in this room`} data-testid="topbar-people">
           {shown.map((p) => (

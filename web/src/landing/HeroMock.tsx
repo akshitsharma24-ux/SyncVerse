@@ -70,7 +70,7 @@ export function HeroMock() {
         <aside className="ide-side" style={{ borderRight: '1px solid var(--rule-soft)', padding: '12px 12px', background: 'var(--paper-2)', fontSize: 12 }}>
           <div className="eyebrow" style={{ fontSize: 10, marginBottom: 6 }}>files</div>
           {['main.py', 'utils.py', 'notes.md'].map((f, i) => (
-            <div key={f} style={{ padding: '3px 6px', margin: '0 -6px', borderRadius: 3, background: i === 0 ? '#e8e5dc' : 'transparent', color: i === 0 ? 'var(--ink)' : 'var(--muted)' }}>
+            <div key={f} style={{ padding: '3px 6px', margin: '0 -6px', borderRadius: 3, background: i === 0 ? 'var(--tile)' : 'transparent', color: i === 0 ? 'var(--ink)' : 'var(--muted)' }}>
               {f}
             </div>
           ))}

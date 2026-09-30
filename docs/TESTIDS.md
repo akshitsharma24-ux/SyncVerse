@@ -63,7 +63,7 @@ an active grantee, 200 for the owner and for an active grantee, and 403 again af
 
 `topbar`, `room-code`, `copy-invite`, `topbar-people`, `editor-status`, `presence-strip` (children carry `data-presence="Name:state"`),
 `data-topbar-presence="Name"` on avatars, `status-chip` (`data-state`), `status-popover`, `toast` (`data-kind`), `entry-card`, `entry-name`,
-`entry-code`, `entry-generated`, `entry-submit`, `video-join`, `video-error`, `video-live`, `panel-crash` (+ `data-panel`).
+`entry-code`, `entry-generated`, `entry-submit`, `theme-toggle` (`data-theme-now`), `video-join`, `video-error`, `video-live`, `panel-crash` (+ `data-panel`).
 Tabs have role `tab` and the names Video, AI, Quality, Debug, Progress. Dev-only: `window.__sv.editor` exposes the EditorHandle.
 
 ## Running it
