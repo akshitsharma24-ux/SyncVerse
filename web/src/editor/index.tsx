@@ -17,8 +17,10 @@ import {
   MAX_FILE_BYTES,
   detectLanguage,
   isLanguageId,
+  isStarterText,
   languageFromName,
   newFileId,
+  renameForLanguage,
   textKey,
   uniqueFileName,
   validateFileName,
@@ -296,7 +298,18 @@ export function EditorPanel() {
       },
       setLanguage: (id, language) => {
         const f = meta.get(id);
-        if (f && canEditRef.current && isLanguageId(language) && f.language !== language) meta.set(id, { ...f, language });
+        if (!f || !canEditRef.current || !isLanguageId(language) || f.language === language) return;
+        const text = doc.getText(textKey(id));
+        const fresh = isStarterText(text.toString()); // untouched: show the new language's hello-world, so the switch is visible
+        const wanted = fresh ? renameForLanguage(f.name, language) : null;
+        const name = wanted && !taken(id).some((n) => n.toLowerCase() === wanted.toLowerCase()) ? wanted : f.name;
+        doc.transact(() => {
+          meta.set(id, { ...f, name, language });
+          if (fresh) {
+            text.delete(0, text.length);
+            text.insert(0, LANGUAGE_BY_ID[language]?.starter ?? '');
+          }
+        });
       },
       download: (id) => {
         const f = meta.get(id);
@@ -439,6 +452,9 @@ export function EditorPanel() {
             severity: m.severity === 'error' ? monaco.MarkerSeverity.Error : m.severity === 'warning' ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Info,
           })),
         );
+      },
+      setLanguage: (language) => {
+        if (active) ops.setLanguage(active, language);
       },
       highlightLine: (line) => {
         decorations.set(line ? [{ range: new monaco.Range(line, 1, line, 1), options: { isWholeLine: true, className: 'sv-error-line' } }] : []);

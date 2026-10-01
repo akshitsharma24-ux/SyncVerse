@@ -110,6 +110,8 @@ export interface EditorHandle {
   setMarkers(markers: EditorMarker[]): void;
   /** Pass null to clear the highlight. */
   highlightLine(line: number | null): void;
+  /** Switch the open file to another language (a LanguageId). While the file is still a starter its code is swapped for the new language's starter. Optional so older stubs still fit. */
+  setLanguage?(language: string): void;
 }
 
 export interface PresenceUser {

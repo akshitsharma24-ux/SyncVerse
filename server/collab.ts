@@ -26,7 +26,7 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
-import { FILES_MAP, MAIN_FILE_ID, textKey, type FileEntry, type FileMeta, type SnapshotFile, type VersionInfo } from '@syncverse/shared';
+import { DEFAULT_PROGRAM, FILES_MAP, MAIN_FILE_ID, textKey, type FileEntry, type FileMeta, type SnapshotFile, type VersionInfo } from '@syncverse/shared';
 import { accountFromToken, isAccountId } from './auth';
 import { accountsRequired } from './env';
 import { logger } from './logger';
@@ -39,15 +39,7 @@ const log = logger('collab');
 const MSG_SYNC = 0;
 const MSG_AWARENESS = 1;
 
-export const STARTER = `def average(nums):
-    total = 0
-    for i in range(len(nums) + 1):
-        total += nums[i]
-    return total / len(nums)
-
-
-print(average([3, 4, 5]))
-`;
+export const STARTER = DEFAULT_PROGRAM;
 
 const SAVE_DEBOUNCE_MS = 800;
 const AUTO_VERSION_MS = () => Number(process.env.VERSION_AUTO_MS) || 5 * 60_000;

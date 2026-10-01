@@ -135,7 +135,11 @@ export function RunPanel() {
                 data-testid="run-language"
                 value={language}
                 disabled={busy}
-                onChange={(e) => setLanguage(e.target.value as Lang)}
+                onChange={(e) => {
+                  const next = e.target.value as Lang;
+                  setLanguage(next);
+                  editor.setLanguage?.(next); // the open file follows: its colours, and its starter code while it is untouched
+                }}
               >
                 {available.map((l) => (
                   <option key={l} value={l}>

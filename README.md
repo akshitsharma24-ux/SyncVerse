@@ -135,6 +135,7 @@ Useful commands (run the checks while `npm run dev` is running, after every merg
 | `npm run test:persist` | code survives a hard server restart (starts its own server on :4101) |
 | `npm run e2e:reconnect` | server dies mid-session: offline edits merge after reconnect (starts its own servers on :4300/:5300) |
 | `npm run e2e:whiteboard` | the shared whiteboard (Whiteboard tool): live drawing, tools, undo, eraser, clear, viewer and paused rules, junk data, large view, PNG, reload (17 checks) |
+| `npm run e2e:language` | choosing a language (console or file bar) swaps an untouched file to that language's starter and name, never replaces your code, viewers cannot switch (6 checks) |
 | `npm run e2e:snippets` | VS Code-style completion: Java `sout` + Tab, `fori`, members after a dot, java.util imports, Python / JS / C / C++ snippets, Enter never accepts (17 checks) |
 
 If an e2e run stalls while launching the browser, just run it again.

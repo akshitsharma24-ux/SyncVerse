@@ -139,6 +139,7 @@ function EditorProvider({ children }: { children: ReactNode }) {
       replaceAll: (t) => implRef.current?.replaceAll(t),
       setMarkers: (m) => implRef.current?.setMarkers(m),
       highlightLine: (l) => implRef.current?.highlightLine(l),
+      setLanguage: (l) => implRef.current?.setLanguage?.(l),
     }),
     [],
   );

@@ -130,6 +130,35 @@ export function uniqueFileName(raw: string, taken: string[]): string {
   return base;
 }
 
+/** The program every new room starts with (the planted IndexError demo). The server seeds new rooms with it. */
+export const DEFAULT_PROGRAM = `def average(nums):
+    total = 0
+    for i in range(len(nums) + 1):
+        total += nums[i]
+    return total / len(nums)
+
+
+print(average([3, 4, 5]))
+`;
+
+/**
+ * True while a file still holds a starter: empty, the room's first program, or any language's hello-world. Changing the file's
+ * language then swaps in the new language's starter. Anything the person wrote or loaded is never replaced.
+ */
+export function isStarterText(text: string): boolean {
+  const t = text.replace(/\r\n?/g, '\n').trim();
+  return t === '' || t === DEFAULT_PROGRAM.trim() || LANGUAGES.some((l) => l.starter.trim() === t);
+}
+
+/** The default file keeps its role when its language changes: main.py becomes Main.java (the class name) or main.js. Other names return null. */
+export function renameForLanguage(name: string, language: string): string | null {
+  if (!/^main\.[A-Za-z0-9]+$/i.test(name)) return null;
+  const ext = LANGUAGE_BY_ID[language]?.extensions[0];
+  if (!ext) return null;
+  const next = language === 'java' ? 'Main.java' : `main.${ext}`;
+  return next === name ? null : next;
+}
+
 /** Short random id for a new file. */
 export function newFileId(): string {
   return Math.random().toString(36).slice(2, 10);
