@@ -76,7 +76,7 @@ monaco.editor.defineTheme('syncverse-dark', {
   colors: {
     'editor.background': '#191C16',
     'editor.foreground': '#EFECE4',
-    'editorLineNumber.foreground': '#6F6B62',
+    'editorLineNumber.foreground': '#8F8B80', // 5:1 on the editor background (the old #6F6B62 was 3.2:1: too faint for WCAG AA)
     'editorLineNumber.activeForeground': '#EFECE4',
     'editor.lineHighlightBackground': '#23291C',
     'editor.lineHighlightBorder': '#23291C',

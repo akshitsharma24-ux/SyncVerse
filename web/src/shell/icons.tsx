@@ -63,6 +63,7 @@ const paths: Record<string, ReactNode> = {
   x: <path d="M6 6l12 12M18 6 6 18" />,
   upload: <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />,
   download: <path d="M12 4v12M7 11l5 5 5-5M5 20h14" />,
+  trophy: <path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M9 20h6M10 17h4" />,
   history: (
     <>
       <path d="M4 12a8 8 0 1 0 2.6-5.9L4 8.5" />

@@ -8,6 +8,9 @@ import { QualityPanel } from '../quality';
 import { DebugPanel } from '../debug';
 import { ProgressPanel } from '../progress';
 import { WhiteboardPanel } from '../whiteboard';
+import { QuizPanel } from '../quiz';
+import { QuizProvider } from '../quiz/state';
+import { QuizTopChip } from '../quiz/TopChip';
 import { VideoDock } from '../video';
 import { SamplesMenu } from '../demo';
 import { PanelBoundary } from '../shell/PanelBoundary';
@@ -23,6 +26,7 @@ const TOOLS = [
   { id: 'ai', label: 'Understand', icon: 'sparkle', el: <AIPanel/> },
   { id: 'video', label: 'Together', icon: 'video', el: <VideoDock/> },
   { id: 'board', label: 'Whiteboard', icon: 'board', el: <WhiteboardPanel/> },
+  { id: 'quiz', label: 'Quiz', icon: 'trophy', el: <QuizPanel/> },
   { id: 'quality', label: 'Code quality', icon: 'checklist', el: <QualityPanel/> },
   { id: 'debug', label: 'Debug', icon: 'bug', el: <DebugPanel/> },
   { id: 'progress', label: 'Your progress', icon: 'chart', el: <ProgressPanel/> },
@@ -101,7 +105,7 @@ export function StudioShell() {
   const consoleResize = <ResizeHandle axis="y" label="Resize console" controls="console-panel" value={consoleHeight} min={120} max={consoleMax} direction={mobile ? 1 : -1} onChange={consoleHeight => updateLayout({ consoleHeight })} onDrag={setResizing}/>;
   const learningResize = <ResizeHandle axis={mobile ? 'y' : 'x'} label="Resize learning panel" controls="learning-tools" value={mobile ? learningHeight : learningWidth} min={mobile ? 300 : 260} max={mobile ? 800 : learningMax} direction={mobile ? 1 : -1} onChange={value => updateLayout(mobile ? { learningHeight: value } : { learningWidth: value })} onDrag={setResizing}/>;
 
-  return <div className={`studio-workspace ${focused ? 'focus-mode' : ''}`} data-resizing={resizing ?? undefined}>
+  return <QuizProvider><div className={`studio-workspace ${focused ? 'focus-mode' : ''}`} data-resizing={resizing ?? undefined}>
     <a className="skip-link" href="#editor-region">Skip to editor</a>
     <header className="studio-topbar" data-testid="topbar">
       <button ref={sidebarButton} className="btn btn-outline btn-sm sidebar-toggle" aria-label={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'} aria-expanded={sidebarVisible} aria-controls="workspace-sidebar" onClick={() => { updateLayout({ sidebar: !sidebarVisible }); setFocused(false); }}><Icon name="sidebar" size={17}/><span>Sidebar</span></button>
@@ -109,6 +113,7 @@ export function StudioShell() {
       <span className="topbar-slash">/</span>
       <div className="workspace-crumb"><strong data-testid="room-code">{room?.name ?? session.roomCode}</strong></div>
       <div className="workspace-top-actions">
+        <QuizTopChip onOpenTool={() => chooseTool('quiz')}/>
         <div className="workspace-service-status"><StatusChip/></div>
         <div className="workspace-avatars" data-testid="topbar-people">{people.slice(0, 4).map(p => <span key={p.userId} data-topbar-presence={p.name} title={`${p.name} · ${p.role}`} style={{ borderColor: p.color }}>{p.name.slice(0, 2).toUpperCase()}</span>)}</div>
         <button className="btn btn-outline btn-sm room-button" onClick={() => setDrawer('people')} data-testid="room-open"><Icon name="users" size={14}/><span>Room</span></button>
@@ -166,5 +171,5 @@ export function StudioShell() {
     </div>
     <footer className="workspace-status"><span><Icon name="lock" size={11}/> Shared code. Private discoveries.</span><span>{file?.language ?? 'Python'}<i/>UTF-8<i/><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to run</span></footer>
     {drawer && <RoomDrawer initialTab={drawer} onClose={() => setDrawer(null)}/>}
-  </div>;
+  </div></QuizProvider>;
 }

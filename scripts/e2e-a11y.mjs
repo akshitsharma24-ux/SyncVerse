@@ -65,7 +65,7 @@ async function suite(theme) {
   await page.goto(`${BASE}/?name=Axe&role=student&room=a11y-${theme}-${Math.random().toString(36).slice(2, 6)}`);
   await page.waitForSelector('.monaco-editor');
   await page.waitForFunction(() => document.body.innerText.includes('live'));
-  for (const tab of ['Video', 'AI', 'Quality', 'Debug', 'Progress', 'Board']) {
+  for (const tab of ['Video', 'AI', 'Quiz', 'Quality', 'Debug', 'Progress', 'Board']) {
     await openTool(page, tab);
     await audit(`workspace, ${tab} tab`);
   }

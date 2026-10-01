@@ -33,6 +33,7 @@ import { logger } from './logger';
 import { roomsDir } from './paths';
 import { addVersion, deleteVersions, getVersion } from './versions';
 import { canWrite, flushRoomStore, isRegistered, memberOf, onRoomEvent, touch } from './roomstore';
+import { flushQuizStore } from './quiz/store';
 
 const log = logger('collab');
 
@@ -316,6 +317,7 @@ function flushAll(): void {
     r.autoVersion('Session ended');
   });
   flushRoomStore();
+  flushQuizStore();
 }
 
 function refuse(socket: Duplex, status: number, text: string): void {

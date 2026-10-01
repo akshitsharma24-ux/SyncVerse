@@ -5,3 +5,4 @@ export * from './samples';
 export * from './fixtures';
 export * from './files';
 export * from './whiteboard';
+export * from './quiz';
