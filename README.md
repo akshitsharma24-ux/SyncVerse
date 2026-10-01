@@ -166,7 +166,7 @@ npm run dev
 
 - Work on your own lane branch and commit with the task ID: `P-B1: poll Judge0 until done`.
 - Merge `origin/main` into your branch often. When a task is done and `npm run typecheck`, `npm run smoke` and `npm run e2e:golden` pass, merge your branch into `main`.
-- No `Co-Authored-By` or "generated with" lines in commits (see CONTRIBUTING.md).
+
 ## Layout
 
 ```
