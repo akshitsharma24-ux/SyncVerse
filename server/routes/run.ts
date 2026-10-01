@@ -281,7 +281,7 @@ interface ExecInput {
   source: string;
   stdin: string;
 }
-interface ExecOutcome {
+export interface ExecOutcome {
   status: RunStatus;
   stdout: string;
   stderr: string;
@@ -290,7 +290,7 @@ interface ExecOutcome {
   memoryKb?: number;
 }
 
-class ServiceError extends Error {}
+export class ServiceError extends Error {}
 
 const judge0Url = () => (process.env.JUDGE0_URL ?? '').replace(/\/+$/, '');
 const useJudge0 = () => Boolean(judge0Url()) && process.env.RUNNER !== 'local';
@@ -494,6 +494,16 @@ function executeLocal(input: ExecInput): Promise<ExecOutcome> {
   });
 }
 
+/** Run one program once and wait for it (used by the quiz judge). Throws ServiceError when the runner itself fails. */
+export async function runOnce(language: Lang, source: string, stdin: string): Promise<ExecOutcome> {
+  const prepared = language === 'java' ? prepareJava(source) : { source };
+  const input: ExecInput = { language, source: prepared.source, stdin };
+  return useJudge0() ? executeJudge0(input, () => undefined) : executeLocal(input);
+}
+
+export type RunLanguage = Lang;
+export const isRunLanguage = (v: unknown): v is Lang => typeof v === 'string' && (LANGUAGES as readonly string[]).includes(v);
+
 // ---- pipeline ----------------------------------------------------------------------------------------
 async function processRun(run: RunResult): Promise<void> {
   const language = run.language as Lang;
@@ -504,8 +514,10 @@ async function processRun(run: RunResult): Promise<void> {
     const out = useJudge0() ? await executeJudge0(input, () => void (run.status = 'running')) : await executeLocal(input);
     run.status = out.status;
     run.stdout = capHead(out.stdout, MAX_STDOUT_CHARS);
-    run.stderr = capTail(out.stderr, MAX_ERR_CHARS);
-    run.compileOutput = capTail((prepared.note ?? '') + out.compileOutput, MAX_ERR_CHARS);
+    // Annotated from the FULL error text and capped afterwards: a Java StackOverflowError is thousands of frames long, and its
+    // first line (the exception name, the only thing worth showing) is the part the tail cap would drop.
+    run.stderr = out.stderr;
+    run.compileOutput = (prepared.note ?? '') + out.compileOutput;
     run.timeMs = out.timeMs;
     run.memoryKb = out.memoryKb;
   } catch (e) {
@@ -530,6 +542,8 @@ async function processRun(run: RunResult): Promise<void> {
       console.error('[run] logEvent failed:', e instanceof Error ? e.message : e);
     }
   }
+  run.stderr = capTail(run.stderr, MAX_ERR_CHARS);
+  run.compileOutput = capTail(run.compileOutput, MAX_ERR_CHARS);
 }
 
 // ---- routes ---------------------------------------------------------------------------------------------

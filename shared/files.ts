@@ -142,12 +142,85 @@ print(average([3, 4, 5]))
 `;
 
 /**
- * True while a file still holds a starter: empty, the room's first program, or any language's hello-world. Changing the file's
- * language then swaps in the new language's starter. Anything the person wrote or loaded is never replaced.
+ * The same planted bug (a loop that goes one step too far) as DEFAULT_PROGRAM, written for every language the runner supports.
+ * Switching a fresh room's file to Java shows the Java version of the demo, not a hello-world. `npm run verify:demos` runs them all.
  */
+export const DEFAULT_PROGRAMS: Record<string, string> = {
+  python: DEFAULT_PROGRAM,
+  java: `public class Main {
+    static double average(int[] nums) {
+        int total = 0;
+        for (int i = 0; i <= nums.length; i++) {
+            total += nums[i];
+        }
+        return (double) total / nums.length;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(average(new int[] {3, 4, 5}));
+    }
+}
+`,
+  javascript: `function average(students) {
+  let total = 0;
+  for (let i = 0; i <= students.length; i++) {
+    total += students[i].marks;
+  }
+  return total / students.length;
+}
+
+console.log(average([{ marks: 3 }, { marks: 4 }, { marks: 5 }]));
+`,
+  c: String.raw`#include <stdio.h>
+#include <string.h>
+
+int main(void) {
+    const char *names[] = {"Asha", "Ravi", "Meera", NULL};
+    int letters = 0;
+    for (int i = 0; i <= 3; i++) {
+        letters += strlen(names[i]);
+    }
+    printf("%d letters\n", letters);
+    return 0;
+}
+`,
+  cpp: `#include <iostream>
+#include <vector>
+
+double average(const std::vector<int>& nums) {
+    int total = 0;
+    for (size_t i = 0; i <= nums.size(); i++) {
+        total += nums.at(i);
+    }
+    return static_cast<double>(total) / nums.size();
+}
+
+int main() {
+    std::cout << average({3, 4, 5}) << std::endl;
+    return 0;
+}
+`,
+};
+
+const normalizeText = (text: string): string => text.replace(/\r\n?/g, '\n').trim();
+
+/**
+ * What a file should show after its language changes to `language`, or null to leave the code alone. Only code nobody wrote is
+ * replaced: an empty file, the room's first program (-> the same demo in the new language), or any language's hello-world
+ * (-> the new language's hello-world). Anything the person wrote or loaded is never replaced.
+ */
+export function starterFor(text: string, language: string): string | null {
+  const t = normalizeText(text);
+  const hello = LANGUAGE_BY_ID[language]?.starter ?? '';
+  if (t === '') return hello;
+  if (Object.values(DEFAULT_PROGRAMS).some((p) => p.trim() === t)) return DEFAULT_PROGRAMS[language] ?? hello;
+  if (LANGUAGES.some((l) => l.starter.trim() === t)) return hello;
+  return null;
+}
+
+/** True while a file still holds a starter (see starterFor). */
 export function isStarterText(text: string): boolean {
-  const t = text.replace(/\r\n?/g, '\n').trim();
-  return t === '' || t === DEFAULT_PROGRAM.trim() || LANGUAGES.some((l) => l.starter.trim() === t);
+  return starterFor(text, 'plaintext') !== null;
 }
 
 /** The default file keeps its role when its language changes: main.py becomes Main.java (the class name) or main.js. Other names return null. */

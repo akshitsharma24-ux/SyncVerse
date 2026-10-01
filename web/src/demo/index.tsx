@@ -1,23 +1,17 @@
 /**
  * Lane D (Miti): P-D3 planted-bug sample menu. Loads a program into the shared editor via replaceAll,
- * so every collaborator gets it. Sample sources live in docs/samples/*.py. "Load demo history" seeds progress data.
+ * so every collaborator gets it. The programs live in docs/samples (see ./programs.ts): each demo exists in every runnable
+ * language, and the menu loads the one for the open file's language. "Load demo history" seeds progress data.
  */
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
-import { useEditor, useSessionUser } from '../session';
-
-const files = import.meta.glob('../../../docs/samples/*.py', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
-
-const SAMPLES = Object.entries(files)
-  .map(([path, source]) => {
-    const file = path.split('/').pop()!;
-    return { file, label: file.replace(/^\d+_/, '').replace(/\.py$/, '').replace(/_/g, ' '), source };
-  })
-  .sort((a, b) => a.file.localeCompare(b.file));
+import { useActiveFile, useEditor, useSessionUser } from '../session';
+import { DEMO_PROGRAMS, demoLanguageFor, type DemoProgram } from './programs';
 
 export function SamplesMenu() {
   const editor = useEditor();
   const me = useSessionUser();
+  const file = useActiveFile();
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -33,6 +27,14 @@ export function SamplesMenu() {
       document.removeEventListener('keydown', esc);
     };
   }, [open]);
+
+  /** Load a demo in the open file's language (Python when the demo has none for it) and make the file match. */
+  function load(program: DemoProgram) {
+    const language = demoLanguageFor(program, file?.language);
+    editor.replaceAll(program.texts[language] ?? '');
+    if (language !== file?.language) editor.setLanguage?.(language); // renames main.py to Main.java etc. and recolours
+    setOpen(false);
+  }
 
   async function reset() {
     if (!window.confirm('Reset the demo? This clears progress history, debug access and help flags for this room.')) return;
@@ -65,13 +67,11 @@ export function SamplesMenu() {
       {open && (
         <div role="menu" data-testid="samples-menu" className="frame"
           style={{ position: 'absolute', right: 0, top: '110%', zIndex: 40, background: 'var(--panel)', border: '1px solid var(--ink)', borderRadius: 4, minWidth: 220, padding: 4 }}>
-          {SAMPLES.map((s) => (
-            <button key={s.file} role="menuitem" className="btn btn-outline btn-sm btn-block" style={{ justifyContent: 'flex-start', border: 0, textTransform: 'capitalize' }}
-              onClick={() => {
-                editor.replaceAll(s.source);
-                setOpen(false);
-              }}>
-              {s.label}
+          {DEMO_PROGRAMS.map((p) => (
+            <button key={p.id} role="menuitem" className="btn btn-outline btn-sm btn-block" style={{ justifyContent: 'flex-start', border: 0, textTransform: 'capitalize' }}
+              onClick={() => load(p)}>
+              {p.label}
+              {demoLanguageFor(p, file?.language) !== file?.language && file ? <span style={{ marginLeft: 6, color: 'var(--muted)', textTransform: 'none' }}>(Python)</span> : null}
             </button>
           ))}
           <hr style={{ border: 0, borderTop: '1px solid var(--rule-soft)', margin: '4px 0' }} />

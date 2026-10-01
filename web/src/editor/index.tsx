@@ -17,7 +17,6 @@ import {
   MAX_FILE_BYTES,
   detectLanguage,
   isLanguageId,
-  isStarterText,
   languageFromName,
   newFileId,
   renameForLanguage,
@@ -32,6 +31,7 @@ import {
 } from '@syncverse/shared';
 import { identityParams } from '../api';
 import { setCollab } from '../collab';
+import { codeForLanguage } from '../demo/programs';
 import { useLowBandwidth } from '../lowbandwidth';
 import { useRoom } from '../room';
 import { useActiveFileSetter, useEditorRegistry, usePresence, usePresenceSetter, useSessionUser } from '../session';
@@ -300,14 +300,15 @@ export function EditorPanel() {
         const f = meta.get(id);
         if (!f || !canEditRef.current || !isLanguageId(language) || f.language === language) return;
         const text = doc.getText(textKey(id));
-        const fresh = isStarterText(text.toString()); // untouched: show the new language's hello-world, so the switch is visible
-        const wanted = fresh ? renameForLanguage(f.name, language) : null;
+        // Untouched code (a starter, or a loaded demo) becomes the same thing in the new language, so the switch is visible.
+        const replacement = codeForLanguage(text.toString(), language);
+        const wanted = replacement !== null ? renameForLanguage(f.name, language) : null;
         const name = wanted && !taken(id).some((n) => n.toLowerCase() === wanted.toLowerCase()) ? wanted : f.name;
         doc.transact(() => {
           meta.set(id, { ...f, name, language });
-          if (fresh) {
+          if (replacement !== null && replacement !== text.toString()) {
             text.delete(0, text.length);
-            text.insert(0, LANGUAGE_BY_ID[language]?.starter ?? '');
+            text.insert(0, replacement);
           }
         });
       },

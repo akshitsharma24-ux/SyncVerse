@@ -51,8 +51,55 @@ await check('the file bar language menu does the same, in both directions', asyn
   if (!(await state(A)).text.includes('#include <iostream>')) throw new Error('C++ starter missing');
   await A.locator('[data-testid="file-language"]').selectOption('python');
   await waitFile(A, 'main.py');
-  if (!(await state(A)).text.includes('print("Hello, SyncVerse!")')) throw new Error('Python starter missing');
+  if (!(await state(A)).text.includes('def average(nums)')) throw new Error('the Python demo is missing');
   eq(await A.locator('[data-testid="run-language"]').inputValue(), 'python', 'the console follows');
+});
+
+await check('the demo program exists in every language: same bug, each in its own language', async () => {
+  const want = { java: 'nums[i]', javascript: 'students[i].marks', c: 'strlen(names[i])', cpp: 'nums.at(i)', python: 'nums[i]' };
+  for (const [lang, snippet] of Object.entries(want)) {
+    await A.locator('[data-testid="run-language"]').selectOption(lang);
+    await A.waitForFunction((l) => window.__sv.files.list()[0].language === l, lang, { timeout: 8000 });
+    const t = (await state(A)).text;
+    if (!t.includes(snippet)) throw new Error(`${lang}: the demo is missing ${snippet}: ${JSON.stringify(t.slice(0, 60))}`);
+    if (lang !== 'python' && t.includes('def average')) throw new Error(`${lang}: still the Python code`);
+  }
+});
+
+await check('a program loaded from Samples follows the language: Samples loads the open language, and a switch converts it', async () => {
+  await A.locator('[data-testid="run-language"]').selectOption('java');
+  await waitFile(A, 'Main.java');
+  await A.click('[data-testid="samples-btn"]');
+  await A.getByRole('menuitem', { name: /name error/i }).click();
+  await A.waitForFunction(() => window.__sv.editor.getValue().includes('totl'), null, { timeout: 8000 });
+  let s = await state(A);
+  eq(s.lang, 'java', 'file language');
+  if (!s.text.includes('public class Main')) throw new Error('Samples loaded the Python version into a Java file');
+  await A.locator('[data-testid="file-language"]').selectOption('cpp');
+  await A.waitForFunction(() => window.__sv.editor.getValue().includes('std::cout << totl'), null, { timeout: 8000 });
+  s = await state(A);
+  eq(s.file, 'main.cpp', 'name');
+  await A.locator('[data-testid="file-language"]').selectOption('javascript');
+  await A.waitForFunction(() => window.__sv.editor.getValue().includes('console.log(totl)'), null, { timeout: 8000 });
+});
+
+await check('a Python-only demo (quality sample) loaded in a Java file switches the file to Python', async () => {
+  await A.locator('[data-testid="run-language"]').selectOption('java');
+  await A.waitForFunction(() => window.__sv.files.list()[0].language === 'java', null, { timeout: 8000 });
+  await A.click('[data-testid="samples-btn"]');
+  await A.getByRole('menuitem', { name: /quality sample/i }).click();
+  await A.waitForFunction(() => window.__sv.files.list()[0].language === 'python', null, { timeout: 8000 });
+  await waitFile(A, 'main.py');
+  if (!(await state(A)).text.includes('eval(input())')) throw new Error('quality sample not loaded');
+  eq(await A.locator('[data-testid="run-language"]').inputValue(), 'python', 'the console follows');
+});
+
+await check('after that, a clean file is a starter again (reset for the next checks)', async () => {
+  await A.evaluate(() => window.__sv.editor.replaceAll(''));
+  await A.locator('[data-testid="run-language"]').selectOption('java');
+  await waitFile(A, 'Main.java');
+  await A.locator('[data-testid="run-language"]').selectOption('python');
+  await waitFile(A, 'main.py');
 });
 
 await check('the room\'s first program counts as a starter too (a fresh room switched to Java shows Java)', async () => {
