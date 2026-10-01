@@ -54,7 +54,7 @@ These are Miti's real names; the golden test uses them today.
 | `observations` | the list of observation sentences (`li` per sentence) |
 | `trend`, `concepts`, `suggestions`, `mentor-table`, `trends` | other progress sections |
 | `samples-btn` | the Samples button in the top bar |
-| `samples-menu` | the open menu; items have role `menuitem` and are labelled from `docs/samples/*.py` ("Index Error", "Stdin Average", ...), plus "Load demo history" and `reset-demo` |
+| `samples-menu` | the open menu; items have role `menuitem` and are labelled from the file names in `docs/samples` ("Index Error", "Stdin Average", ...), plus "Load demo history" and `reset-demo`. The same demo exists in Python, Java, JavaScript, C and C++; the menu loads the open file's language (a demo with none, like "Quality Sample", opens in Python and switches the file) |
 
 Server privacy (checked by the golden test through the API): `GET /api/run/<id>` returns 403 for anyone who is not the owner or
 an active grantee, 200 for the owner and for an active grantee, and 403 again after revoke.
@@ -75,3 +75,18 @@ npm run dev            # in one terminal
 npm run e2e:golden     # prints PASS / SKIP / FAIL per demo step
 npm run e2e:golden -- --strict   # demo morning: SKIP counts as a failure
 ```
+
+## Quiz arena (Akshit) - BUILT
+
+Panel root `quiz-panel` (the **Quiz** learning tool). Browser test: `npm run e2e:quiz`.
+
+| data-testid | What it is |
+|---|---|
+| `quiz-form`, `quiz-topic-<id>`, `quiz-level-<easy\|medium\|hard\|mixed>`, `quiz-format-<mcq\|code\|mixed>`, `quiz-count`, `quiz-minutes`, `quiz-title-input`, `quiz-liveboard`, `quiz-available`, `quiz-create` | the mentor's five questions and the Create button |
+| `quiz-summary` (`data-status` = lobby / running / ended), `quiz-clock`, `quiz-question-list`, `quiz-start`, `quiz-reroll`, `quiz-cancel`, `quiz-end`, `quiz-end-confirm`, `quiz-new`, `quiz-progress`, `quiz-stats`, `quiz-stat` (`data-full`, `data-attempted`) | the mentor's controls and live numbers |
+| `quiz-none`, `quiz-wait`, `quiz-mine`, `quiz-final-mine`, `quiz-open-arena`, `quiz-review` | what a student sees in the panel |
+| `quiz-chip` | the "Quiz live" chip in the top bar (opens the answering view, or the board for a mentor) |
+| `quiz-arena`, `quiz-q-<n>` (`data-state`), `quiz-score`, `quiz-rank`, `quiz-next` | the full-window answering view |
+| `quiz-mcq`, `quiz-option-<i>`, `quiz-lock`, `quiz-feedback` | a multiple-choice question |
+| `quiz-code-question`, `quiz-code` (the editor; dev hook `window.__svQuizCode.setValue(text)`), `quiz-language`, `quiz-stdin`, `quiz-run`, `quiz-run-output`, `quiz-submit`, `quiz-result` (`data-passed`, `data-total`), `quiz-result-tab`, `quiz-error` | a coding question |
+| `quiz-board`, `quiz-open-board`, `quiz-export`, `leaderboard`, `leaderboard-row` (`data-name`, `data-rank`, `data-score`), `podium` | the leaderboard, the full-window board and the CSV export |

@@ -40,6 +40,7 @@ Do this in order. Stop and fix anything red.
 | 5 | 2:15 | Ravi | Samples menu, **"Index Error"**. Run. The line is marked. **Understand** tool, **Explain with AI**. Show patch: Reject (nothing changes), show again, Accept (both editors update) | error line, AI explain, patch |
 | 6 | 3:30 | Mei | Samples menu, **"Quality Sample"**. **Code quality** lists findings in five categories | quality panel |
 | 7 | 4:00 | Asha, Ravi | In the **Debug** tool Asha requests access to Ravi's session. Ravi allows (with "assist" if Asha should re-run the code and suggest an edit, which Ravi accepts or rejects). Asha sees Ravi's console. Ravi revokes; it disappears instantly | debug access |
+| 7b | 4:30 | Asha, Ravi | Optional, 60 s: Asha opens the **Quiz** tool, answers five short choices (Arrays and Strings, Mixed, Both, 4 questions, 5 minutes) and starts it. Ravi's top bar shows **Quiz live**; he answers one multiple-choice question and submits a coding problem. The **live board** (share it on screen) moves; Asha ends the quiz and the **podium** appears | quiz arena |
 | 8 | 4:45 | Ravi | **Your progress**: "retry recommended" observation, no scores | progress page |
 | 9 | 5:15 | Presenter | Roadmap: execution canvas, predict-and-reflect checkpoints, classrooms. **Say plainly these are not built yet** | - |
 
