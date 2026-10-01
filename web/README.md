@@ -1,7 +1,7 @@
 # web: the SyncVerse frontend (Quiet Studio)
 
 The default frontend. Dark charcoal surfaces, warm white type, a muted olive accent, locally bundled Geist fonts, a serif contrast
-in the headline. It replaced the earlier "paper and ink" frontend, which is kept in `../frontend-old/` (see its README).
+in the headline. It is the only frontend in the repository.
 
 ```
 npm run dev          # from the repository root: API on :4000, this frontend on http://localhost:5173

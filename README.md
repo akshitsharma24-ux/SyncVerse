@@ -24,9 +24,8 @@ Collaborative real-time code editor for remote STEM education (PS 02). Overnight
 
 ## Frontends
 
-`web/` is the default frontend, the dark **Quiet Studio** design (entry page, resizable workspace, learning tools in a side panel).
-The previous "paper and ink" frontend is kept as a runnable backup in `frontend-old/`: `npm run dev:old` (port 5175).
-See `web/README.md` and `frontend-old/README.md`.
+`web/` is the only frontend: the dark **Quiet Studio** design (entry page, resizable workspace, learning tools in a side panel).
+See `web/README.md`.
 
 ## Architecture
 
@@ -72,7 +71,7 @@ copy .env.example .env     # fill in keys as your lane needs them
 npm run dev
 ```
 
-- Web: http://localhost:5173  (proxies /api and /collab to the server). The previous frontend: `npm run dev:old`, http://localhost:5175
+- Web: http://localhost:5173  (proxies /api and /collab to the server)
 - Server: http://localhost:4000, health at http://localhost:4000/api/health (shows which keys are configured)
 - Two users on one machine: use two browser **tabs**. Skip the form with `/?name=Asha&role=mentor&room=loops-101`.
 - Other devices on the same network or phone hotspot: open `http://<your-laptop-ip>:5173`.
@@ -193,7 +192,6 @@ npm run dev
 ```
 shared/types.ts        contracts every lane imports (@syncverse/shared)
 web/src/               the default frontend (Quiet Studio): Vite + React; one folder per lane (editor, video, console, quality, ai, debug, progress, demo) plus studio/ (shell) and whiteboard/
-frontend-old/          the previous frontend, kept as a backup (npm run dev:old)
 server/                Express; routes/*.ts one file per lane; collab.ts is the Yjs WebSocket
 docs/TRACKER.md        status + handoff;  docs/lanes/  one file per lane
 scripts/smoke.mjs      automated checks

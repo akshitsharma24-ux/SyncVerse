@@ -49,7 +49,7 @@ Two people on one laptop: open two **tabs** (each tab is a different user). Shor
 
 ## Look and feel (use it in your panels)
 
-The frontend is **Quiet Studio**: charcoal surfaces, warm white text, one muted olive accent (`--accent`). Tokens are CSS variables in `web/src/studio/studio.css` (base rules in `web/src/index.css`); do not hard-code colours. The app is dark only (`<html data-theme="dark">`); there is no theme toggle. The previous light and dark "paper and ink" frontend lives in `frontend-old/` and is not used.
+The frontend is **Quiet Studio**: charcoal surfaces, warm white text, one muted olive accent (`--accent`). Tokens are CSS variables in `web/src/studio/studio.css` (base rules in `web/src/index.css`); do not hard-code colours. The app is dark only (`<html data-theme="dark">`); there is no theme toggle.
 
 - Colours: `var(--paper)` page, `var(--panel)` panel, `var(--ink)` text, `var(--muted)` secondary text, `var(--rule-soft)` borders, `var(--accent)` the one accent, `var(--danger)` / `var(--ok)` / `var(--warn)`. **Red is only for errors.** People colours (cursors, avatars) come from `usePresence()`. **If you only use variables, your panel matches the shell.** Use `var(--overlay)` for modal scrims.
 - Learning tools are the list at the top of `web/src/studio/StudioShell.tsx` (Understand, Together, Whiteboard, Code quality, Debug, Your progress). To add one, add a line there; the side panel, the picker and the keyboard navigation pick it up.

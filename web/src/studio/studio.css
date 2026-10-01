@@ -1,4 +1,4 @@
-/* Quiet Studio: a self-contained visual exploration for frontend2. */
+/* Quiet Studio: the design tokens and base rules of the frontend. */
 :root, :root[data-theme='dark'] {
   color-scheme: dark;
   --paper: #111111; --paper-2: #171717; --panel: #191919;

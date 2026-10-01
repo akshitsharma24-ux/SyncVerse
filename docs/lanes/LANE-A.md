@@ -2,7 +2,7 @@
 
 Read `CONTRIBUTING.md` and `docs/TRACKER.md` first. Update the tracker when you start and finish each task.
 
-**Frontend note:** `web/` is the Quiet Studio frontend (shell in `web/src/studio/`); the previous frontend is in `frontend-old/`. Panels are the same; the tab names in this file are now the learning tools (see `web/README.md`).
+**Frontend note:** `web/` is the Quiet Studio frontend (shell in `web/src/studio/`). Panels are the same; the tab names in this file are now the learning tools (see `web/README.md`).
 
 **Folders you may edit:** `web/src/editor/`, `web/src/video/`, `web/src/whiteboard/`, `server/collab.ts`, `server/routes/livekit.ts` (and the shell files, only in P-A1 or by agreement)
 
