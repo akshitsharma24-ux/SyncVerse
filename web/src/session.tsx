@@ -140,6 +140,7 @@ function EditorProvider({ children }: { children: ReactNode }) {
       setMarkers: (m) => implRef.current?.setMarkers(m),
       highlightLine: (l) => implRef.current?.highlightLine(l),
       setLanguage: (l) => implRef.current?.setLanguage?.(l),
+      stepLine: (l) => implRef.current?.stepLine?.(l),
     }),
     [],
   );

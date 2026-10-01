@@ -180,6 +180,7 @@ export function EditorPanel() {
     let active: string | null = null;
     let lastList: FileEntry[] = [];
     const decorations = editor.createDecorationsCollection();
+    const stepDecorations = editor.createDecorationsCollection(); // the debugger's current line, kept apart from the error line
 
     const ensureModel = (id: string, m: FileMeta) => {
       const have = entries.get(id);
@@ -217,6 +218,7 @@ export function EditorPanel() {
       if (editor.getModel() !== e.model) {
         editor.setModel(e.model);
         decorations.clear();
+        stepDecorations.clear();
       }
       setField('file', id);
       publishSelection(); // so others see my cursor in this file straight away
@@ -456,6 +458,10 @@ export function EditorPanel() {
       },
       setLanguage: (language) => {
         if (active) ops.setLanguage(active, language);
+      },
+      stepLine: (line) => {
+        stepDecorations.set(line ? [{ range: new monaco.Range(line, 1, line, 1), options: { isWholeLine: true, className: 'sv-step-line', linesDecorationsClassName: 'sv-step-arrow' } }] : []);
+        if (line) editor.revealLineInCenterIfOutsideViewport(line);
       },
       highlightLine: (line) => {
         decorations.set(line ? [{ range: new monaco.Range(line, 1, line, 1), options: { isWholeLine: true, className: 'sv-error-line' } }] : []);

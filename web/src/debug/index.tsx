@@ -3,12 +3,14 @@
  * Request / allow / deny / revoke, a read-only mirror of the owner's latest run for the grantee.
  * Modal and banner render through a portal because inactive dock tabs are display:none.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { DebugGrant, RunResult } from '@syncverse/shared';
 import { ApiError, api, eventSourceUrl } from '../api';
 import { useSessionUser, usePresence, useEditor } from '../session';
 import { Icon } from '../shell/icons';
+import { useToast } from '../shell/toast';
+import { OwnStepper, WatchStepper } from './StepperSections';
 import { Overview } from './Overview';
 import { Nudge } from './Nudge';
 import { AssistTools, ProposalDialog, type Proposal, type ProposalResult } from './Assist';
@@ -21,8 +23,11 @@ function useGrants(
   onHighlight: (by: string, line: number) => void,
   onBroadcast: (from: string, message: string) => void,
   onSuggestion: (event: 'proposal' | 'proposal-withdrawn' | 'proposal-result', data: unknown) => void,
+  onGrant: (g: Grant, before: Grant['status'] | undefined) => void,
 ) {
   const [grants, setGrants] = useState<Record<string, Grant>>({});
+  const known = useRef<Record<string, Grant>>({});
+  known.current = grants;
   const merge = useCallback((g: Grant) => setGrants((prev) => ({ ...prev, [g.id]: g })), []);
 
   useEffect(() => {
@@ -31,7 +36,12 @@ function useGrants(
       if (!closed) setGrants(Object.fromEntries(list.map((g) => [g.id, g])));
     }).catch(() => {});
     const es = new EventSource(eventSourceUrl('/api/debug/events?room=' + encodeURIComponent(roomCode)));
-    es.onmessage = (m) => merge(JSON.parse(m.data) as Grant);
+    es.onmessage = (m) => {
+      const g = JSON.parse(m.data) as Grant;
+      const before = known.current[g.id]?.status;
+      merge(g);
+      onGrant(g, before); // live changes only (not the list loaded at the start), so a refresh does not replay old notices
+    };
     es.addEventListener('broadcast', (m) => {
       const d = JSON.parse((m as MessageEvent).data) as { from: string; message: string };
       onBroadcast(d.from, d.message);
@@ -125,6 +135,9 @@ export function DebugPanel() {
   const me = useSessionUser();
   const people = usePresence().filter((p) => p.userId !== me.userId);
   const editor = useEditor();
+  const toast = useToast();
+  const peopleRef = useRef(people);
+  peopleRef.current = people;
   const [pointed, setPointed] = useState<string | null>(null);
   const [announce, setAnnounce] = useState<{ from: string; message: string } | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]); // suggested edits waiting for MY answer
@@ -143,6 +156,18 @@ export function DebugPanel() {
     if (event === 'proposal') setProposals((prev) => [...prev.filter((p) => p.id !== (data as Proposal).id), data as Proposal]);
     else if (event === 'proposal-withdrawn') setProposals((prev) => prev.filter((p) => p.id !== (data as { id: string }).id));
     else setSuggestResult(data as ProposalResult);
+  }, (g, before) => {
+    // Notices for every change that involves me, whichever tool is open (the Debug panel is always mounted).
+    const owner = peopleRef.current.find((p) => p.userId === g.ownerId)?.name ?? 'That person';
+    const ended = g.status === 'revoked' || g.status === 'expired';
+    if (g.ownerId === me.userId) {
+      if (g.status === 'requested' && !before) toast(`${g.granteeName} asked to see your session. Allow or deny it in the dialog.`, 'info');
+      else if (ended && before === 'active') toast(`${g.granteeName} is no longer viewing your session.`, 'info');
+    } else if (g.granteeId === me.userId) {
+      if (g.status === 'active' && before !== 'active') toast(`${owner} allowed you to view their session${g.scope === 'assist' ? ', with the help tools' : ''}.`, 'ok');
+      else if (g.status === 'denied') toast(`${owner} declined your request.`, 'info');
+      else if (ended && before === 'active') toast(`Your access to ${owner}'s session ended.`, 'info');
+    }
   });
   useEffect(() => {
     // After a page refresh: suggestions that are still waiting for an answer.
@@ -182,6 +207,23 @@ export function DebugPanel() {
         are stuck, not what you ran.
       </p>
 
+      {/* Whoever allowed me in: their session comes first, so a mentor does not have to scroll for it. */}
+      {active.map((g) => (
+        <div key={g.id} data-testid="mirror">
+          <Mirror ownerId={g.ownerId} ownerName={nameOf(g.ownerId)} assistGrantId={g.scope === 'assist' ? g.id : undefined} result={suggestResult} />
+          <WatchStepper ownerId={g.ownerId} ownerName={nameOf(g.ownerId)} />
+          {g.scope === 'assist' && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <input className="input code" style={{ width: 80 }} inputMode="numeric" placeholder="line" aria-label="Line to point at" value={line} onChange={(e) => setLine(e.target.value.replace(/\D/g, ''))} data-testid="hl-line" />
+              <button className="btn btn-outline btn-sm" disabled={!line} onClick={() => highlight(g.id)} data-testid="hl-send">Point at line</button>
+            </div>
+          )}
+          <button className="btn btn-outline btn-sm" style={{ marginTop: 6 }} onClick={() => revoke(g.id)}>Stop viewing</button>
+        </div>
+      ))}
+
+      <OwnStepper />
+
       {me.role === 'mentor' && (
         <Overview
           people={people}
@@ -218,18 +260,6 @@ export function DebugPanel() {
       {pointed && <div role="status" data-testid="pointed" style={{ fontSize: 12.5, border: '1px solid var(--ink)', borderRadius: 4, padding: 8 }}>{pointed}</div>}
       {msg && <div style={{ color: 'var(--danger)', fontSize: 12 }} role="alert">{msg}</div>}
 
-      {active.map((g) => (
-        <div key={g.id} data-testid="mirror">
-          <Mirror ownerId={g.ownerId} ownerName={nameOf(g.ownerId)} assistGrantId={g.scope === 'assist' ? g.id : undefined} result={suggestResult} />
-          {g.scope === 'assist' && (
-            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-              <input className="input code" style={{ width: 80 }} inputMode="numeric" placeholder="line" aria-label="Line to point at" value={line} onChange={(e) => setLine(e.target.value.replace(/\D/g, ''))} data-testid="hl-line" />
-              <button className="btn btn-outline btn-sm" disabled={!line} onClick={() => highlight(g.id)} data-testid="hl-send">Point at line</button>
-            </div>
-          )}
-          <button className="btn btn-outline btn-sm" style={{ marginTop: 6 }} onClick={() => revoke(g.id)}>Stop viewing</button>
-        </div>
-      ))}
       {mine.some((g) => g.status === 'denied') && <div style={{ fontSize: 12, color: 'var(--muted)' }}>A request was declined.</div>}
 
       {announce && (

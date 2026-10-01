@@ -102,6 +102,14 @@ export function canView(viewerId: string, ownerId: string): boolean {
   return g?.status === 'active';
 }
 
+/** Send a server-sent event to everyone who currently holds an active grant on `ownerId`'s session (the mentors watching them). */
+export function notifyViewers(ownerId: string, event: string, data: unknown): void {
+  expireDue();
+  for (const g of grants.values()) {
+    if (g.ownerId === ownerId && g.status === 'active') sendTo(g.granteeId, event, data);
+  }
+}
+
 /** Demo reset (P-D3): forget every grant and block for this room. */
 export function resetDebug(roomCode: string): void {
   for (const [id, g] of grants) {

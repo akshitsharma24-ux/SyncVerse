@@ -568,6 +568,19 @@ input {
   background: var(--err-bg);
   box-shadow: inset 3px 0 0 var(--danger);
 }
+/* The line the step-through debugger is on: olive band and an arrow in the gutter. */
+.sv-step-line {
+  background: #c0cd9d1f;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.sv-step-arrow {
+  margin-left: 3px;
+  width: 0 !important;
+  border-left: 8px solid var(--accent);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  align-self: center;
+}
 
 @container (max-width: 430px) {
   .tab svg {

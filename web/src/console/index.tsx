@@ -6,6 +6,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RunResult, RunStatus } from '@syncverse/shared';
 import { useActiveFile, useEditor, useSessionUser } from '../session';
+import { useDebugger } from '../debug/stepper-context';
+import { Icon } from '../shell/icons';
 import { useRunner } from './useRunner';
 import { flashLine } from './markers';
 import { ALL_LANGUAGES, LANGUAGE_LABEL, setLanguage, useLanguage, type Lang } from './language';
@@ -36,6 +38,7 @@ export function RunPanel() {
   const editor = useEditor();
   const me = useSessionUser();
   const { runs, selectedId, setSelectedId, busy, notice, info, run } = useRunner();
+  const debug = useDebugger();
   const [stdin, setStdin] = useState(() => {
     try {
       return sessionStorage.getItem(stdinKey(me.roomCode)) ?? '';
@@ -126,6 +129,17 @@ export function RunPanel() {
                 <path d="M1 1l8 4.5L1 10z" fill="currentColor" />
               </svg>
               {busy ? 'Running…' : 'Run'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              data-testid="debug-btn"
+              disabled={busy || debug.own.busy || !debug.canDebug}
+              onClick={() => void debug.start({ stdin })}
+              title={debug.canDebug ? 'Step through the shared file line by line and watch the variables change' : 'Step-through debugging works for Python files'}
+            >
+              <Icon name="bug" size={13} />
+              {debug.own.busy ? 'Debugging…' : 'Debug'}
             </button>
             <span className="eyebrow hide-sm">Ctrl+Enter</span>
             {available.length > 1 && (

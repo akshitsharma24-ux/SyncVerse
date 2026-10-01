@@ -23,6 +23,7 @@ import { router as debugRouter } from './routes/debug';
 import { router as eventsRouter } from './routes/events';
 import { router as livekitRouter } from './routes/livekit';
 import { router as quizRouter } from './routes/quiz';
+import { router as traceRouter } from './routes/trace';
 
 installProcessHandlers();
 validateEnv();
@@ -61,6 +62,7 @@ app.use('/api', debugRouter);
 app.use('/api', eventsRouter);
 app.use('/api', livekitRouter);
 app.use('/api', quizRouter);
+app.use('/api', traceRouter);
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'unknown route' });
