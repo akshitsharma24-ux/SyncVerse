@@ -1,8 +1,8 @@
 ﻿# SyncVerse - read this first (every teammate)
 
-SyncVerse is a collaborative real-time code editor for remote STEM education (problem statement PS 02).
-Tonight's goal: a working **prototype demo at 9 am**. The plan is `SyncVerse_Overnight_Prototype_Plan.pdf`
-(scope, clock, contracts, demo script). The long-term design is `SyncVerse_Master_Blueprint.pdf`.
+SyncVerse is a collaborative real-time code editor for remote STEM education (problem statement PS 02); the [README](README.md) shows
+what it does and how to run it. The original plan is `docs/plans/SyncVerse_Overnight_Prototype_Plan.pdf` (scope, contracts, demo script)
+and the long-term design is `docs/plans/SyncVerse_Master_Blueprint.pdf`.
 
 ## Start every session like this
 

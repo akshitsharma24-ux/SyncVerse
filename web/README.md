@@ -17,8 +17,9 @@ npm run typecheck
   the sidebar (starts collapsed), the console and the learning panel each open, close and resize on their own (drag, or arrow keys
   on the divider); sizes and visibility are remembered (`localStorage` key `studio.layout.v2`). Focus mode hides the panels and
   restores them on exit. On phones the console and learning panel stack and resize vertically.
-- **Learning tools** (the list at the top of `StudioShell.tsx`): Understand (AI explain and patch), Together (video), Whiteboard,
-  Code quality, Debug, Your progress. To add a tool, add one line to that list.
+- **Learning tools** (the list at the top of `StudioShell.tsx`): Understand (AI explain, hint ladder and patch), Together (video),
+  Whiteboard, Quiz, Code quality, Debug (step-through debugger and debug access), Your progress. To add a tool, add one line to that list.
+  The shell also mounts the providers the tools share: `QuizProvider` (`src/quiz/`) and `DebuggerProvider` (`src/debug/`).
 - **Shared whiteboard** (`src/whiteboard/`, contract in `shared/whiteboard.ts`): pen, line, arrow, rectangle, ellipse, text,
   eraser, six colours, three sizes, undo, mentor-only clear, PNG export, and a large view. A dark page with a dot grid; see
   `palette.ts` for the colours and `whiteboard.css` for the look.

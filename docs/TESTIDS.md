@@ -29,6 +29,8 @@ Miti's debug mirror reads `GET /api/runs/latest?ownerId=` from you, so that rout
 | data-testid | What it is | Required attributes / content |
 |---|---|---|
 | `ai-panel` | root of the AI panel | |
+| `ai-hint-start` | "Guide me with hints": opens the optional hint ladder (the explain and patch buttons above it work without it) | |
+| `ai-hint-ladder`, `ai-hint-rung-1` / `-2` / `-3`, `ai-hint-nudge`, `ai-hint-next` ("Need another hint?"), `ai-hint-question`, `ai-hint-fix` ("Still stuck? Show the fix"), `ai-hint-fix-note`, `ai-hint-fix-retry`, `ai-hint-patch-button`, `ai-hint-skip`, `ai-hint-exit`, `ai-hint-error` | the ladder: rung 1 shows only the nudge, rung 2 the question, rung 3 loads the explanation (`ai-explanation`) and offers the patch | |
 | `ai-explain-button` | "Explain with AI" for the latest run (Lane C's real name) | |
 | `ai-explanation` | the finished explanation | visible, with readable text (what / where / why / fix) |
 | `ai-suggest-patch-button` | "Suggest patch" | opens the diff preview |
@@ -75,6 +77,21 @@ npm run dev            # in one terminal
 npm run e2e:golden     # prints PASS / SKIP / FAIL per demo step
 npm run e2e:golden -- --strict   # demo morning: SKIP counts as a failure
 ```
+
+## Step-through debugger (Akshit) - BUILT
+
+Lives in the **Debug** tool (`debug-panel`); the console has the `debug-btn`. Browser test: `npm run e2e:debugger`.
+
+| data-testid | What it is |
+|---|---|
+| `debug-btn` | the Debug button next to Run in the console (disabled with a reason for files that are not Python) |
+| `debugger`, `dbg-intro`, `debug-start`, `debug-again`, `dbg-stop`, `dbg-run-error` | your own session: the start screen, the start and restart buttons, stop, and a message when debugging failed |
+| `dbg-own` / `dbg-watch` (`data-step`, `data-steps`, `data-line`) | the stepper for your own trace / for the student you are watching |
+| `dbg-state`, `dbg-position`, `dbg-desc`, `dbg-error`, `dbg-jump-error`, `dbg-empty` | the verdict, the step number, what the step is about to do, the error card, a button to jump to it, and the no-steps message |
+| `dbg-first`, `dbg-back`, `dbg-next`, `dbg-last`, `dbg-play`, `dbg-speed`, `dbg-slider` | the step controls |
+| `dbg-code`, `dbg-line-<n>` | the code box; each line number runs to that line |
+| `dbg-vars`, `dbg-var-<name>`, `dbg-hist-<name>`, `dbg-stack`, `dbg-out` | variables, one variable's value and its history, the call stack and the output so far |
+| `dbg-live`, `dbg-follow`, `dbg-watch-empty`, `dbg-source-changed` | mentor view: the live banner, rejoin the student, the empty state, and a warning when the editor changed after the trace |
 
 ## Quiz arena (Akshit) - BUILT
 
