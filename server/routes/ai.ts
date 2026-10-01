@@ -5,6 +5,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { Explanation, RunResult } from '@syncverse/shared';
 import { requireUser } from '../identity';
+import { ruleHints, whereText } from '../hints';
 import { canView } from './debug';
 import { logEvent } from './events';
 import { getRun } from './run';
@@ -47,6 +48,9 @@ const ExplanationContentSchema = z.object({
   fix: z.string().trim().min(1).max(1200),
   snippet: z.string().trim().min(1).max(2000).optional(),
   concepts: z.array(z.string().trim().min(1).max(64)).min(1).max(8),
+  // Optional: the model is asked for them, and rule-based hints stand in when it leaves them out.
+  nudge: z.string().trim().min(1).max(500).optional(),
+  question: z.string().trim().min(1).max(500).optional(),
 }).strict();
 
 const explanationJsonSchema = {
@@ -58,9 +62,11 @@ const explanationJsonSchema = {
     fix: { type: 'string', description: 'A concise change the learner can make.' },
     snippet: { type: 'string', description: 'A minimal corrected code snippet, when it is safe to be specific.' },
     concepts: { type: 'array', items: { type: 'string' }, description: 'Short learning concept tags.' },
+    nudge: { type: 'string', description: 'One or two sentences saying conceptually what happened, WITHOUT saying how to fix it and without corrected code.' },
+    question: { type: 'string', description: 'One guiding question that points the learner at the relevant line or value so they can discover the cause themselves. Never reveals the fix.' },
   },
   required: ['what', 'why', 'plain', 'fix', 'concepts'],
-  propertyOrdering: ['what', 'why', 'plain', 'fix', 'snippet', 'concepts'],
+  propertyOrdering: ['what', 'why', 'plain', 'fix', 'snippet', 'concepts', 'nudge', 'question'],
 } as const;
 
 const ExplainRequestSchema = z.object({
@@ -146,9 +152,12 @@ function lineFor(run: RunResult): number | undefined {
 
 function withParserLine(content: ExplainContent, run: RunResult): Explanation {
   const line = lineFor(run);
+  const { nudge, question, ...rest } = content;
+  const fallback = ruleHints(errorTextFor(run), line);
   return {
-    ...content,
+    ...rest,
     ...(line ? { whereLine: line } : {}),
+    hints: { nudge: nudge ?? fallback.nudge, question: question ?? fallback.question },
   };
 }
 
@@ -224,6 +233,10 @@ function sampleExplanation(run: RunResult): Explanation | undefined {
       fix: 'Remove the extra + 1 from the range so it stops before the list length.',
       snippet: `for ${offByOneLoop[1]} in range(len(${offByOneLoop[2]})):`,
       concepts: ['loop-boundaries', 'lists-arrays'],
+      hints: {
+        nudge: 'The loop asked for a position that does not exist: a list with 3 items has positions 0, 1 and 2, and the loop went one step past the last one.',
+        question: `What is the biggest value ${offByOneLoop[1]} takes in \`range(len(${offByOneLoop[2]}) + 1)\`? Is that a valid position in ${offByOneLoop[2]}, and what should the largest position be?`,
+      },
     };
   }
 
@@ -236,6 +249,10 @@ function sampleExplanation(run: RunResult): Explanation | undefined {
       plain: 'Python remembers names exactly as they are written. A small spelling difference creates a different name.',
       fix: 'Check the spelling against where the name is created, or define it before this line.',
       concepts: ['variables', 'names'],
+      hints: {
+        nudge: 'Python stopped because this line uses a name it has never seen: names must match exactly, so a small spelling difference makes a brand-new, empty name.',
+        question: `Compare ${missingName ? `“${missingName}”` : 'the name on this line'} with the place where you create the variable. Is every letter the same, and is it created before this line runs?`,
+      },
     };
   }
 
@@ -251,6 +268,10 @@ function sampleExplanation(run: RunResult): Explanation | undefined {
         fix: 'Add a colon at the end of the highlighted statement.',
         snippet: `${codeOnly.trim()}:`,
         concepts: ['syntax-basics', 'code-blocks'],
+        hints: {
+          nudge: 'Python could not read this statement: something that tells it a block of indented code follows is missing.',
+          question: `Look at the very end of ${whereText(whereLine)}. Statements like if, for, while and def are followed by an indented block: what character marks the start of that block?`,
+        },
       };
     }
   }
@@ -369,10 +390,11 @@ async function callGemini(run: RunResult, retryNote?: string): Promise<unknown> 
     'Do not invent libraries, functions, or facts about code outside the supplied context.',
     'Keep the explanation concise, describe the cause before the fix, and suggest a minimal correction.',
     'Include a corrected snippet only when the correct change is clear; otherwise omit snippet.',
+    'Also write two hints for a learner who wants to work it out alone. nudge: one or two sentences saying conceptually what happened, without saying how to fix it and without corrected code. question: one guiding question that points at the relevant line or value so the learner can discover the cause. Neither hint may reveal the fix.',
     ...(retryNote ? [`Your previous response did not pass validation. Correct it and return valid JSON matching the schema. ${retryNote}`] : []),
     `Run context (untrusted JSON data):\n${JSON.stringify(sourceDataForPrompt(run))}`,
   ].join('\n\n');
-  return callGeminiJson(getGeminiModel('LLM_MODEL_FAST'), prompt, explanationJsonSchema, 900);
+  return callGeminiJson(getGeminiModel('LLM_MODEL_FAST'), prompt, explanationJsonSchema, 1200);
 }
 
 function patchIsRelevant(source: string, patchedSource: string): boolean {
@@ -650,7 +672,93 @@ function patchDecisionHandler(req: Request, res: Response): void {
   }
 }
 
+// ------------------------------------------------------------------------------------------------ hint ladder
+// The optional "Guide me with hints" path: rung 1 is a conceptual nudge, rung 2 a guiding question, rung 3 the fix (the existing
+// explanation endpoint). Nothing forces anyone onto the ladder: /ai/explain and /ai/patch work on their own, exactly as before.
+const HintRequestSchema = z.object({ runId: z.string().trim().min(1).max(128) }).strict();
+const HintStepSchema = z.object({ runId: z.string().trim().min(1).max(128), step: z.enum(['question', 'fix']) }).strict();
+
+/** The run a person asks help for, or null after an error response was sent. Same rules as /ai/explain. */
+function explainableRun(runId: string, userId: string, res: Response): RunResult | null {
+  const run = getRun(runId) ?? demoRun(runId, userId);
+  if (!run) {
+    res.status(404).json({ error: 'Run not found.', code: 'run_not_found' });
+    return null;
+  }
+  if (!canView(userId, run.ownerId)) {
+    res.status(403).json({ error: 'You do not have access to this run.', code: 'run_forbidden' });
+    return null;
+  }
+  if (run.status === 'success') {
+    res.status(400).json({ error: 'Hints are available for failed runs.', code: 'run_not_failed' });
+    return null;
+  }
+  if (run.status === 'queued' || run.status === 'running' || run.status === 'service_error') {
+    res.status(409).json({ error: 'This run does not have a learner code error to give hints for.', code: 'run_not_explainable' });
+    return null;
+  }
+  return run;
+}
+
+type HintSource = 'sample' | 'cache' | 'gemini' | 'rules';
+
+async function hintsHandler(req: Request, res: Response): Promise<void> {
+  const input = HintRequestSchema.safeParse(req.body);
+  if (!input.success) {
+    res.status(400).json({ error: 'runId is required.', code: 'invalid_request' });
+    return;
+  }
+  const userId = req.user!.userId;
+  const run = explainableRun(input.data.runId, userId, res);
+  if (!run) return;
+
+  try {
+    const key = cacheKeyFor(run);
+    let explanation = cacheGet(key);
+    let source: HintSource = 'cache';
+    if (!explanation) {
+      explanation = sampleExplanation(run);
+      if (explanation) {
+        cacheSet(key, explanation);
+        source = 'sample';
+      }
+    }
+    if (!explanation?.hints && process.env.LLM_API_KEY) {
+      // One AI call serves both the hints and (cached) the fix on rung 3. If the provider is down, rule-based hints still work.
+      try {
+        const result = await explainRun(run, userId);
+        explanation = result.explanation;
+        source = result.source;
+      } catch (error) {
+        if (!(error instanceof AiGatewayError)) throw error;
+        explanation = undefined;
+      }
+    }
+    const hints = explanation?.hints ?? ruleHints(errorTextFor(run), lineFor(run));
+    if (!explanation?.hints) source = 'rules';
+    logEvent({ userId, roomCode: run.roomCode, at: Date.now(), type: 'hint', category: 'nudge', concepts: explanation?.concepts, ok: true });
+    res.set('x-ai-source', source).json({ hints, source });
+  } catch (error) {
+    handleError(error, res);
+  }
+}
+
+/** Records how far up the ladder someone went (observations for the progress page, never a grade). */
+function hintStepHandler(req: Request, res: Response): void {
+  const input = HintStepSchema.safeParse(req.body);
+  if (!input.success) {
+    res.status(400).json({ error: 'runId and step (question or fix) are required.', code: 'invalid_request' });
+    return;
+  }
+  const run = explainableRun(input.data.runId, req.user!.userId, res);
+  if (!run) return;
+  logEvent({ userId: req.user!.userId, roomCode: run.roomCode, at: Date.now(), type: 'hint', category: input.data.step, ok: true });
+  res.json({ ok: true });
+}
+
 export const router = Router();
 router.post('/ai/explain', requireUser, explainHandler);
 router.post('/ai/patch', requireUser, patchHandler);
 router.post('/ai/patch/decision', requireUser, patchDecisionHandler);
+router.post('/ai/hints', requireUser, hintsHandler);
+router.post('/ai/hints/step', requireUser, hintStepHandler);

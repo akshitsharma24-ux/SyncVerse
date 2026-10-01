@@ -132,6 +132,13 @@ function summarize(userId: string, all: readonly LearningEvent[]): ProgressSumma
   }
   const explains = mine.filter((e) => e.type === 'explain').length;
   if (explains > 0) observations.push(`You asked the AI to explain an error ${explains} time${explains === 1 ? '' : 's'}.`);
+  const traces = mine.filter((e) => e.type === 'trace').length;
+  if (traces > 0) observations.push(`You stepped through your code ${traces} time${traces === 1 ? '' : 's'} to watch the variables change.`);
+  const hintLadders = mine.filter((e) => e.type === 'hint' && e.category === 'nudge').length;
+  if (hintLadders > 0) {
+    const fixes = mine.filter((e) => e.type === 'hint' && e.category === 'fix').length;
+    observations.push(`You asked for step-by-step hints ${hintLadders} time${hintLadders === 1 ? '' : 's'} and opened the fix ${fixes} time${fixes === 1 ? '' : 's'}. Thinking before seeing the answer is a good habit.`);
+  }
   const acc = mine.filter((e) => e.type === 'patch' && e.ok).length;
   const rej = mine.filter((e) => e.type === 'patch' && e.ok === false).length;
   if (acc + rej > 0) observations.push(`You reviewed ${acc + rej} AI patch${acc + rej === 1 ? '' : 'es'}: ${acc} accepted, ${rej} rejected. You stay in control.`);

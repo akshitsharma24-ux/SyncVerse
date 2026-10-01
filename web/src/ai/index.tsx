@@ -5,6 +5,7 @@ import type { Explanation, RunResult } from '@syncverse/shared';
 import { ApiError, api } from '../api';
 import { useEditor, useSessionUser, useWorkspace } from '../session';
 import { Icon } from '../shell/icons';
+import { HintLadder, type HintSet, type Tier } from './HintLadder';
 
 const DEMO_RUN_ID = 'syncverse-ai-demo-typeerror';
 const DEMO_SOURCE = 'scores = ["4"]\ntotal = scores[0] + 1\nprint(total)';
@@ -120,11 +121,24 @@ export function AIPanel() {
   const [patchError, setPatchError] = useState<string | null>(null);
   const [patchStale, setPatchStale] = useState(false);
   const [patchFeedback, setPatchFeedback] = useState<string | null>(null);
+  // The optional hint ladder (a nudge, a guiding question, then the fix). Separate from the direct explanation above it.
+  const [hintMode, setHintMode] = useState(false);
+  const [hints, setHints] = useState<HintSet | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hintError, setHintError] = useState<string | null>(null);
+  const [hintTier, setHintTier] = useState<Tier>(0);
   const requestSequence = useRef(0);
   const patchSequence = useRef(0);
+  const hintSequence = useRef(0);
 
   useEffect(() => {
     requestSequence.current += 1;
+    hintSequence.current += 1;
+    setHintMode(false);
+    setHints(null);
+    setHintLoading(false);
+    setHintError(null);
+    setHintTier(0);
     setLoading(false);
     setExplanation(null);
     setError(null);
@@ -247,6 +261,63 @@ export function AIPanel() {
     }
   }
 
+  // ------------------------------------------------------------------------------- hint ladder (optional)
+  function logHintStep(step: 'question' | 'fix') {
+    if (lastRun) void api.post('/api/ai/hints/step', { runId: lastRun.id, step }).catch(() => undefined);
+  }
+
+  async function startHints() {
+    if (!lastRun || !explainable) return;
+    const run = lastRun;
+    const sequence = ++hintSequence.current;
+    requestSequence.current += 1; // a direct explanation still loading is no longer wanted
+    setLoading(false);
+    setExplanation(null);
+    setError(null);
+    setHintMode(true);
+    setHints(null);
+    setHintError(null);
+    setHintTier(1);
+    setHintLoading(true);
+    if (run.errorLine) editor.highlightLine(run.errorLine);
+    try {
+      const result = await api.post<{ hints: { nudge: string; question: string }; source: HintSet['source'] }>('/api/ai/hints', { runId: run.id });
+      if (hintSequence.current !== sequence) return;
+      setHints({ ...result.hints, source: result.source });
+    } catch (err) {
+      if (hintSequence.current === sequence) setHintError(apiErrorMessage(err));
+    } finally {
+      if (hintSequence.current === sequence) setHintLoading(false);
+    }
+  }
+
+  function nextHint() {
+    setHintTier(2);
+    logHintStep('question');
+  }
+
+  function showFix() {
+    setHintTier(3);
+    logHintStep('fix');
+    void explainLatestRun();
+  }
+
+  function leaveHints() {
+    hintSequence.current += 1;
+    setHintMode(false);
+    setHints(null);
+    setHintLoading(false);
+    setHintError(null);
+    setHintTier(0);
+  }
+
+  function skipToDirect() {
+    leaveHints();
+    void explainLatestRun();
+  }
+
+  const fixState = explanation ? 'done' : loading ? 'loading' : error ? 'error' : 'idle';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }} data-testid="ai-panel">
       <header>
@@ -255,7 +326,7 @@ export function AIPanel() {
         </div>
         <h2 style={{ margin: '7px 0 3px', fontSize: 18, letterSpacing: '-0.025em', fontWeight: 550 }}>Understand the failure</h2>
         <div style={{ color: 'var(--muted)', fontSize: 12.5, lineHeight: 1.45 }}>
-          Understand your latest failed run and review a suggested correction.
+          Understand your latest failed run: get the explanation straight away, or work it out yourself with step-by-step hints. Both are optional.
         </div>
       </header>
 
@@ -286,7 +357,26 @@ export function AIPanel() {
 
       {lastRun && explainable && <RunError run={lastRun} />}
 
-      {lastRun && explainable && (
+      {lastRun && explainable && hintMode && (
+        <HintLadder
+          tier={hintTier}
+          hints={hints}
+          loading={hintLoading}
+          error={hintError}
+          line={lastRun.errorLine}
+          fix={fixState}
+          patchLoading={patchLoading}
+          onHighlight={() => editor.highlightLine(lastRun.errorLine ?? null)}
+          onQuestion={nextHint}
+          onFix={showFix}
+          onRetryFix={() => void explainLatestRun()}
+          onPatch={() => void suggestPatch()}
+          onDirect={skipToDirect}
+          onExit={leaveHints}
+        />
+      )}
+
+      {lastRun && explainable && !hintMode && (
         <>
           <button
             className="btn btn-block"
@@ -307,6 +397,11 @@ export function AIPanel() {
           >
             {patchLoading ? 'Preparing patch preview…' : 'Suggest a patch'}
           </button>
+          <div className="ai-or" aria-hidden="true">or think it through</div>
+          <button className="btn btn-outline btn-block" type="button" onClick={() => void startHints()} data-testid="ai-hint-start">
+            <Icon name="bulb" size={15} /> Guide me with hints
+          </button>
+          <p className="ai-hint-offer">A gentle nudge first, then a guiding question. The fix stays hidden until you ask for it. The buttons above work without any hints.</p>
         </>
       )}
 

@@ -65,6 +65,12 @@ export interface Diagnostic {
 }
 
 // ---- Lane C: AI tutor --------------------------------------------------------------------------
+/** The first two rungs of the hint ladder: a conceptual nudge, then a guiding question. Neither gives the fix away. */
+export interface ExplanationHints {
+  nudge: string;
+  question: string;
+}
+
 export interface Explanation {
   what: string;
   whereLine?: number;
@@ -73,6 +79,8 @@ export interface Explanation {
   fix: string;
   snippet?: string;
   concepts: string[];
+  /** For the optional "Guide me with hints" path. Always present on answers from /api/ai/explain. */
+  hints?: ExplanationHints;
 }
 
 // ---- Lane D: debug access and progress -----------------------------------------------------------
@@ -90,7 +98,7 @@ export interface LearningEvent {
   userId: string;
   roomCode: string;
   at: number;
-  type: 'run' | 'explain' | 'patch' | 'lint' | 'debug_access';
+  type: 'run' | 'explain' | 'patch' | 'lint' | 'debug_access' | 'hint' | 'trace';
   category?: string; // e.g. the error category of a failed run
   concepts?: string[];
   ok?: boolean;
@@ -112,6 +120,8 @@ export interface EditorHandle {
   highlightLine(line: number | null): void;
   /** Switch the open file to another language (a LanguageId). While the file is still a starter its code is swapped for the new language's starter. Optional so older stubs still fit. */
   setLanguage?(language: string): void;
+  /** Mark the line the step-through debugger is on (a different look from the error line). Pass null to clear. Optional so older stubs still fit. */
+  stepLine?(line: number | null): void;
 }
 
 export interface PresenceUser {

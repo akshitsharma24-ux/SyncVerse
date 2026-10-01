@@ -63,6 +63,13 @@ const paths: Record<string, ReactNode> = {
   x: <path d="M6 6l12 12M18 6 6 18" />,
   upload: <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />,
   download: <path d="M12 4v12M7 11l5 5 5-5M5 20h14" />,
+  skipback: <path d="M6 5v14M18 5 9 12l9 7z" />,
+  stepback: <path d="M15 6 9 12l6 6" />,
+  stepforward: <path d="m9 6 6 6-6 6" />,
+  skipforward: <path d="M18 5v14M6 5l9 7-9 7z" />,
+  play: <path d="M7 5l12 7-12 7z" />,
+  pause: <path d="M8 5v14M16 5v14" />,
+  bulb: <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z" />,
   trophy: <path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M9 20h6M10 17h4" />,
   history: (
     <>
