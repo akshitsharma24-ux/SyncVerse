@@ -208,9 +208,13 @@ textarea.input.rc-stdin {
   cursor: pointer;
 }
 .rc-chip[aria-pressed='true'] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #21221f; /* dark text on the light olive fill: the selected run's time must stay readable */
+  font-weight: 600;
+}
+.rc-chip[aria-pressed='true'][data-tone] i {
+  background: #21221f;
 }
 .rc-chip i {
   width: 6px;
