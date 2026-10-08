@@ -62,6 +62,9 @@ export function computeEnvReport(env: NodeJS.ProcessEnv = process.env): EnvRepor
   if (!ai) warnings.push('LLM_API_KEY is not set: AI explanations use the built-in answers only.');
   const accountsRequired = env.REQUIRE_AUTH === '1' || env.REQUIRE_AUTH === 'true';
   if (env.NODE_ENV === 'production') {
+    if (!env.JUDGE0_URL || env.RUNNER === 'local') {
+      errors.push('Production requires JUDGE0_URL and RUNNER must not be local: submitted code must run in a sandbox.');
+    }
     if (!env.AUTH_SECRET) warnings.push('AUTH_SECRET is not set in production: a generated secret file is used. Set your own so logins survive moving servers.');
     if (!accountsRequired) warnings.push('REQUIRE_AUTH is off: anyone can join as a guest. Fine for a demo, not for real classes.');
   }

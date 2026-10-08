@@ -3,6 +3,7 @@
  * Order matters: request log -> JSON body -> identity (account token or guest headers) -> routes -> 404 -> error handler.
  */
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import dotenv from 'dotenv';
 import express from 'express';
@@ -32,6 +33,17 @@ const log = logger('server');
 const app = express();
 app.set('trust proxy', 'loopback'); // behind the Vite dev proxy or a reverse proxy on the same machine
 app.use(requestLogger);
+// Production uses one origin for the built frontend, API, and collaboration socket.
+// Serve the login page and assets before identity checks (including REQUIRE_AUTH=1).
+if (process.env.NODE_ENV === 'production') {
+  const frontend = path.resolve(__dirname, '../web/dist');
+  const index = path.join(frontend, 'index.html');
+  if (!existsSync(index)) throw new Error('Frontend build missing. Run npm run build before npm start.');
+  app.use(express.static(frontend));
+  app.get(/^\/(?!api(?:\/|$)|collab(?:\/|$)|assets(?:\/|$))[^.]*$/, (_req, res) => {
+    res.sendFile(index);
+  });
+}
 app.use(express.json({ limit: '1mb' }));
 app.use(identity);
 
