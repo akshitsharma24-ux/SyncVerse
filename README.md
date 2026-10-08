@@ -147,6 +147,12 @@ saved under `server/data/` (git-ignored).
 
 The full five-minute demo script and the demo-morning checklist are in [docs/DEMO.md](docs/DEMO.md).
 
+## Deploy it
+
+`npm run build` then `npm start` serves the built frontend, the API and the collaboration socket from one port (production mode needs a
+sandboxed `JUDGE0_URL`). `render.yaml` describes a free Render web service; the steps, the free-tier limits and the environment variables are in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). `npm run test:production` checks the production entry point without any keys.
+
 ## Testing
 
 Every check starts from the command line. Most browser checks need Microsoft Edge (Playwright drives it); many start their own servers, the
@@ -191,7 +197,7 @@ Built with TypeScript, React 19, Vite, Tailwind, Monaco, Yjs, Express, LiveKit, 
 
 - Features: [quiz](docs/features/quiz.md), [hint ladder](docs/features/hint-ladder.md), [step-through debugger](docs/features/debugger.md),
   [AI tutor](docs/features/ai-tutor.md), [demo programs](docs/features/demo-programs.md); the frontend: [web/README.md](web/README.md)
-- Running a demo: [docs/DEMO.md](docs/DEMO.md); the UI test-id contract: [docs/TESTIDS.md](docs/TESTIDS.md)
+- Running a demo: [docs/DEMO.md](docs/DEMO.md); deploying it: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md); the UI test-id contract: [docs/TESTIDS.md](docs/TESTIDS.md)
 - Working on it: [CONTRIBUTING.md](CONTRIBUTING.md), the team tracker [docs/TRACKER.md](docs/TRACKER.md), per-area notes in [docs/lanes/](docs/lanes/)
 - Background: the plan and the long-term design in [docs/plans/](docs/plans/), earlier working notes in [docs/archive/](docs/archive/)
 

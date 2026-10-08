@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: syncverse
+    runtime: node
+    plan: free
+    numInstances: 1
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.18.0
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_SECRET
+        generateValue: true
+      # Free plan: no persistent disk and the filesystem is wiped on every sleep/restart/redeploy,
+      # so run in guest mode (accounts would vanish) and keep data in /tmp.
+      - key: REQUIRE_AUTH
+        value: "0"
+      - key: SYNCVERSE_DATA_DIR
+        value: /tmp/syncverse
+      - key: COLLAB_DATA_DIR
+        value: /tmp/syncverse/rooms
+      - key: LOG_TO_FILE
+        value: "0"
+      # Free public Judge0 (no key). Shared and rate-limited, fine for a demo.
+      - key: JUDGE0_URL
+        value: https://ce.judge0.com
+      # Optional features: paste the values in the Render dashboard when prompted (leave blank to turn the feature off).
+      - key: LLM_API_KEY
+        sync: false
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
